@@ -106,7 +106,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 2,
       "finish": 2,
-      "path": "solicitud.pdf",
+      "path": "solicitud.doc",
       "tip": "Completa la solicitud y súbela al portal.",
       "required": true
     },
@@ -118,7 +118,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 2,
       "finish": 2,
-      "path": "carta_compromiso.pdf",
+      "path": "carta_compromiso.doc",
       "tip": "Descarga, firma según corresponda y entrega la carta compromiso.",
       "required": true
     },
@@ -130,7 +130,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 2,
       "finish": 2,
-      "path": "carta_asignacion.pdf",
+      "path": "carta_asignacion.doc",
       "tip": "Completa la carta de asignación y súbela.",
       "required": true
     },
@@ -178,7 +178,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "reporte_bimestral.pdf",
+      "path": "reporte_bimestral.doc",
       "tip": "Elabora el reporte del primer bimestre, solicita aval de la instancia y súbelo.",
       "required": true
     },
@@ -190,7 +190,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "evaluacion_cualitativa.pdf",
+      "path": "evaluacion_cualitativa.doc",
       "fallback": "evaluacion.pdf",
       "tip": "Completa el formato de evaluación y obtiene el aval correspondiente.",
       "required": true
@@ -203,7 +203,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "autoevaluacion_cualitativa.pdf",
+      "path": "autoevaluacion_cualitativa.doc",
       "tip": "Llena el formato de autoevaluación y obtiene los avales indicados.",
       "required": true
     },
@@ -215,7 +215,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "reporte_bimestral.pdf",
+      "path": "reporte_bimestral.doc",
       "tip": "Disponible cuando se abra el segundo bimestre.",
       "required": true,
       "period": 2
@@ -228,7 +228,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "evaluacion_cualitativa.pdf",
+      "path": "evaluacion_cualitativa.doc",
       "fallback": "evaluacion.pdf",
       "tip": "Evaluación correspondiente al segundo bimestre.",
       "required": true,
@@ -242,7 +242,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "autoevaluacion_cualitativa.pdf",
+      "path": "autoevaluacion_cualitativa.doc",
       "tip": "Autoevaluación correspondiente al segundo bimestre.",
       "required": true,
       "period": 2
@@ -255,7 +255,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "reporte_bimestral.pdf",
+      "path": "reporte_bimestral.doc",
       "tip": "Disponible cuando se abra el tercer bimestre.",
       "required": true,
       "period": 3
@@ -268,7 +268,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "evaluacion_cualitativa.pdf",
+      "path": "evaluacion_cualitativa.doc",
       "fallback": "evaluacion.pdf",
       "tip": "Evaluación correspondiente al tercer bimestre.",
       "required": true,
@@ -282,7 +282,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 8,
       "finish": 11,
-      "path": "autoevaluacion_cualitativa.pdf",
+      "path": "autoevaluacion_cualitativa.doc",
       "tip": "Autoevaluación correspondiente al tercer bimestre.",
       "required": true,
       "period": 3
@@ -307,7 +307,7 @@ window.SS_CATALOGO = {
       "action": "upload",
       "start": 12,
       "finish": 14,
-      "path": "evaluacion_actividades.pdf",
+      "path": "evaluacion_actividades.doc",
       "tip": "Completa el formato de evaluación de actividades.",
       "required": true
     },
