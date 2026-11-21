@@ -1,82 +1,32 @@
-# TecNM Campus Matehuala — Portal del estudiante
+# Portal del estudiante — TecNM Campus Matehuala
 
-## Inicio rápido
+Archivos públicos: `index.html`, `assets/`, `formatos/`, `_headers`, `functions/`.
 
-1. Extrae el ZIP.
-2. Abre `index.html` en un navegador moderno.
-3. Ingresa una de las cuentas de esta tabla.
-4. Navega por Inicio, Documentos, Horas y Avisos.
-5. En Documentos, presiona «Formato» para descargar automáticamente el PDF sin abandonar la página.
+## Usuarios de interfaz
+- 24660001 / 1234 — seguimiento (actividad 10/16)
+- 24660002 / 2345 — aún no elegible (actividad 1/16)
+- 24660003 / 3456 — registro (actividad 2/16)
 
-| Número de control | NIP de 4 dígitos | Estado |
-| --- | --- | --- |
-| `24660001` | `1234` | Elegible, seguimiento |
-| `24660002` | `2345` | Créditos insuficientes |
-| `24660003` | `3456` | Elegible, registro |
+Estos NIP están en JavaScript; NO constituyen autenticación institucional. Nunca utilizar datos personales reales con este acceso. La interfaz no muestra advertencias de desarrollo, pero antes de usarla fuera de un entorno de demostración debe implementarse autenticación de servidor.
 
-**Los NIP son credenciales de demostración incluidas en JavaScript público, no proporcionan autenticación real.** No deben utilizarse para proteger expedientes verdaderos.
+## Comportamiento actual
+- Navegación desktop/mobile, elegibilidad, horas de ejemplo, 16 actividades oficiales, cuatro macroetapas, guía contextual del asistente.
+- Solo se habilitan documentos/formato de la etapa y periodo precargado del usuario.
+- Descarga de PDF mediante `fetch()` y Blob; mantiene la pantalla abierta. Si el formato no existe muestra error.
+- La carta de aceptación y la de terminación son emitidas por la instancia, nunca por el TecNM.
+- La carta de presentación y constancia son documentos institucionales de Vinculación y solo se pondrán a descarga tras su emisión autorizada.
+- El formulario de subida selecciona PDF pero no finge recepción: `/api/upload` responde HTTP 503 hasta conectar n8n.
+- El asistente usa respuestas guiadas locales y NO se anuncia en esta documentación como IA real hasta conectar n8n/LLM.
+- El avance no cambia automáticamente en esta versión. Cuando se conecte n8n, la fuente será Google Sheets y las transiciones se comprobarán en el servidor.
 
-## Archivos principales
-
-- `index.html`: entrada web.
-- `assets/styles.css`: estilos responsive.
-- `assets/app.js`: navegación, ingreso con NIP de demostración, vistas y lógica visible.
-- `assets/formatos.js`: rutas fijas a los PDF oficiales.
-- `formatos/`: carpeta donde colocarás los archivos oficiales descargables.
-- `functions/api/health.js`: comprobación de Cloudflare Pages Functions.
-- `functions/api/upload.js` y `functions/api/agent.js`: funciones cerradas hasta conectar autenticación y n8n.
-
-## Nombres EXACTOS de los PDF oficiales
-
-Coloca los archivos directamente en la carpeta `formatos` con los nombres siguientes:
-
-1. `solicitud.pdf`
-2. `plan_trabajo.pdf`
-3. `carta_presentacion.pdf`
-4. `carta_aceptacion.pdf`
-5. `reporte_bimestral.pdf` (plantilla de los reportes 1, 2 y 3)
-6. `evaluacion.pdf`
-
-No necesitas modificar `assets/formatos.js` si usas estos nombres. Los formatos pueden faltar al principio; la aplicación se puede publicar sin ellos, pero no podrán descargarse hasta que los agregues. **No se incluyen PDFs inventados ni documentos privados.**
-
-Si los documentos institucionales usan un nombre diferente, renómbralos exactamente como aparecen arriba antes de subirlos. Si el formato del bimestre cambia, se pueden cambiar las rutas por bimestre en `assets/formatos.js`.
-
-## Qué funciona ahora
-
-- Ingreso con número de control y NIP de 4 dígitos, solo en el navegador.
-- Pantallas y navegación responsive para celular y computadora.
-- Cálculo visible de elegibilidad para las cuentas de prueba.
-- Restricción de documentos disponibles según la etapa precargada.
-- Selección de PDF (máximo 5 MiB) y preparación de envío a `/api/upload`.
-- Descarga de formatos al agregar los PDFs a `formatos/`.
-- Horas calculadas desde reportes marcados como aceptados en los datos de demostración.
-- Respuestas de orientación de la interfaz del asistente.
-
-## Qué NO está conectado todavía
-
-- Autenticación real, sesiones seguras, padrón académico institucional.
-- Recepción y almacenamiento de PDF en Drive.
-- Validación de contenido mediante IA.
-- Agente conectado a n8n y recordatorios por Telegram.
-
-`/api/upload` y `/api/agent` responden 503 hasta que sus funciones se implementen. La página **no registra un PDF como recibido** mientras no exista un servidor que lo confirme.
+## Formatos PDF
+Conserva los archivos PDF de tu repositorio actual dentro de `formatos/`. En este ZIP solo hay un archivo `COLOCA_AQUI_TUS_PDF.txt`. Revisa esta lista antes de borrar la versión anterior.
 
 ## Publicar en Cloudflare Pages
+Mantén el proyecto Pages existente (NO Worker), sube los archivos nuevos, conserva tus PDF actuales y confirma un commit en la rama `main`. Pages desplegará automáticamente. Verifica navegación en móvil y PDFs. No subas claves de IA/n8n al repositorio.
 
-1. Crea un repositorio en GitHub.
-2. Sube el CONTENIDO de esta carpeta a la raíz del repositorio: `index.html`, `assets/`, `formatos/`, `functions/` y `README.md`.
-3. En Cloudflare Pages, crea un proyecto conectado a ese repositorio.
-4. Configura un sitio sin framework y sin comando de build.
-5. Publica y abre el dominio `.pages.dev`.
-6. Agrega los PDFs oficiales a la carpeta `formatos/` y confirma los cambios en GitHub para que se publiquen.
+## Migración a Google Sheets
+Descarga el archivo Excel complementario, impórtalo a Google Sheets como reemplazo del libro previo (tras conservar una copia). Incluye cinco pestañas `ESTUDIANTES`, `EXPEDIENTES`, `DOCUMENTOS`, `REQUISITOS`, `CONVOCATORIAS`. En esta entrega el portal usa datos locales para no fingir la conexión.
 
-**Seguridad:** el NIP de esta entrega es local y demostrativo, aunque no se mencione dentro de las pantallas. No garantiza identidad ni autorización. La interfaz no debe recibir documentos reales antes de implementar controles de servidor. Los PDFs en la carpeta pública `formatos/` serán descargables por cualquiera que conozca su URL; almacena ahí solamente plantillas oficiales destinadas a distribución pública.
-
-## Cambios de esta versión
-
-- **Descarga automática**: desde Cloudflare Pages, el PDF se lee como archivo y se guarda mediante una descarga del navegador (no se abre una pantalla de PDF).
-- El archivo `_headers` configura `Content-Disposition: attachment` para los PDF de `/formatos/` al publicarlos en Cloudflare Pages.
-- Si se abre `index.html` desde una carpeta local (`file://`), se usa el atributo `download`, aunque el comportamiento exacto puede depender del navegador. En Cloudflare Pages es más fiable.
-- **Regreso sin iniciar sesión de nuevo**: se conserva el número de control en `sessionStorage` durante la sesión de esa pestaña. El NIP no se guarda. Cerrar sesión elimina ese dato. Esto solo mantiene el estado de la demostración, **no es una sesión de autenticación segura**.
-- Los nombres de los PDF se mantienen sin cambios: solo coloca los archivos correspondientes en `formatos/`.
-- Si actualizas una web ya publicada, sube `_headers` junto a los archivos y realiza una recarga completa.
+## Documentación normativa
+Basado en el procedimiento TecNM-VI-PO-002, revisión 0, en particular las 16 actividades de la sección 5 y registros de la sección 7. Los nombres y entregas definitivos deben verificarse con el responsable institucional y los formatos vigentes.

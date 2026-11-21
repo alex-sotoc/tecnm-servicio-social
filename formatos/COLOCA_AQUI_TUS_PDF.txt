@@ -1,0 +1,16 @@
+Coloca los formatos oficiales que ya descargaste en esta carpeta. NO elimines los PDF que ya subiste a GitHub al actualizar el sitio.
+
+Nombres admitidos:
+solicitud.pdf
+carta_compromiso.pdf
+carta_asignacion.pdf
+plan_trabajo.pdf
+reporte_bimestral.pdf
+evaluacion_cualitativa.pdf (si no existe, se intenta evaluacion.pdf)
+autoevaluacion_cualitativa.pdf
+evaluacion_actividades.pdf
+reporte_final.pdf
+
+NO colocar carta_aceptacion.pdf como formato descargable: la emite la instancia receptora.
+NO distribuir carta_presentacion.pdf vacía como documento ya emitido: la emite Vinculación.
+Para el portal no son necesarias todas las plantillas del cierre mientras no esté habilitado.
