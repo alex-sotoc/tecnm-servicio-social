@@ -1,0 +1,3 @@
+/formatos/*.pdf
+  Content-Disposition: attachment
+  X-Content-Type-Options: nosniff
