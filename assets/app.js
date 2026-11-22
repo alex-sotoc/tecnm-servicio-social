@@ -12,6 +12,8 @@ const USERS={
  '24660003':{name:'Mariana Torres',nip:'3456',approved:175,total:250,period:0,activity:2,hours:0,exp:'EXP-003'}
 };
 let userId=null,screen='inicio',chosen=null,bimestreAbierto=null,notice='',messages=[],sending=false,syncing=false,lastSync=0,pendingUploads=new Set(),uploading=false;
+// Nunca mostrar datos iniciales de USERS como si fueran el expediente oficial.
+let profileReady=false,profileLoadError='';
 const clone=v=>JSON.parse(JSON.stringify(v));
 const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=v=>String(v??'').trim().toUpperCase();
@@ -86,8 +88,8 @@ function nextStep(){
  return 'Consulta tu expediente.';
 }
 function badge(value){const names={ACEPTADO:['Aceptado','green'],VALIDADO_TECNICAMENTE:['Validado técnicamente','green'],OBSERVADO:['Con observaciones','red'],DOCUMENTO_INCORRECTO:['Documento incorrecto','red'],REVISION_REQUERIDA:['Revisión requerida','yellow'],EN_REVISION:['En revisión','yellow'],EMITIDO:['Emitido','blue'],DISPONIBLE:['Disponible','blue'],ENTREGADO:['Entregado','blue'],DESCARTADO:['Descartado','gray'],PENDIENTE:['Pendiente','gray']};const [name,cls]=names[norm(value)]||names.PENDIENTE;return `<span class="pill ${cls}">${name}</span>`}
-function render(){if(!userId){renderLogin();return;}const views={inicio:home,documentos:documents,avance:progress,avisos:alerts,asistente:assistant,subir:upload};root.innerHTML=`<div class="app"><header class="head"><div class="head-inner"><div class="brand"><div class="emblem" aria-hidden="true">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><div class="head-right"><span>${safe(profile().name.split(' ')[0])}</span><button id="logout">Salir ↗</button></div></div></header><nav class="tabs"><div class="tabs-inner">${nav().map(tab).join('')}</div></nav><main class="container">${notice?`<div class="notice">${safe(notice)}</div>`:''}${(views[screen]||home)()}</main><button class="fab" data-page="asistente" aria-label="Abrir asistente">✦</button><nav class="bottom-nav">${nav().map(x=>tab(x,true)).join('')}</nav></div>`;
- const lg=root.querySelector('#logout');if(lg)lg.onclick=()=>{userId=null;sessionStorage.removeItem(SESSION);render()};
+function render(){if(!userId){renderLogin();return;}if(!profileReady){renderProfileLoading();return;}const views={inicio:home,documentos:documents,avance:progress,avisos:alerts,asistente:assistant,subir:upload};root.innerHTML=`<div class="app"><header class="head"><div class="head-inner"><div class="brand"><div class="emblem" aria-hidden="true">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><div class="head-right"><span>${safe(profile().name.split(' ')[0])}</span><button id="logout">Salir ↗</button></div></div></header><nav class="tabs"><div class="tabs-inner">${nav().map(tab).join('')}</div></nav><main class="container">${notice?`<div class="notice">${safe(notice)}</div>`:''}${(views[screen]||home)()}</main><button class="fab" data-page="asistente" aria-label="Abrir asistente">✦</button><nav class="bottom-nav">${nav().map(x=>tab(x,true)).join('')}</nav></div>`;
+ const lg=root.querySelector('#logout');if(lg)lg.onclick=()=>{userId=null;profileReady=false;profileLoadError='';sessionStorage.removeItem(SESSION);render()};
  root.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>go(el.dataset.page));
  root.querySelectorAll('[data-download]').forEach(el=>el.onclick=()=>downloadFormat(el.dataset.download));
  root.querySelectorAll('[data-generated]').forEach(el=>el.onclick=()=>downloadIssued(el.dataset.generated));
@@ -105,7 +107,19 @@ function nav(){return [['inicio','Inicio'],['documentos','Documentos'],['avance'
 function navIcon(id){return `<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id]||''}</svg>`}
 function tab(x,mobile=false){return `<button class="nav-tab ${mobile?'nav-mobile':''} ${screen===x[0]?'active':''}" data-page="${x[0]}" aria-label="${x[1]}" aria-current="${screen===x[0]?'page':'false'}">${navIcon(x[0])}<span>${x[1]}</span></button>`}
 function go(p,id){screen=p;chosen=id||null;notice='';render();window.scrollTo(0,0);if(p==='documentos'||p==='inicio'||p==='avance')silentRefresh()}
-function renderLogin(){root.innerHTML=`<div class="auth"><div class="auth-card"><div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><h1>Iniciar sesión</h1><p>Consulta y completa tus trámites</p><form id="login"><div class="field"><label for="ctl">Número de control</label><input id="ctl" inputmode="numeric" maxlength="8" autocomplete="username" required></div><div class="field"><label for="nip">NIP de cuatro dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></div><button class="btn primary full" type="submit">Iniciar sesión →</button><div id="loginError" aria-live="polite"></div></form></div></div>`;root.querySelector('#login').onsubmit=e=>{e.preventDefault();const c=root.querySelector('#ctl').value.trim(),n=root.querySelector('#nip').value.trim();if(!USERS[c]||USERS[c].nip!==n){root.querySelector('#loginError').innerHTML='<p class="error">Número de control o NIP incorrecto.</p>';return;}userId=c;sessionStorage.setItem(SESSION,c);screen='inicio';messages=[];render();refreshStatus(true)}}
+function renderProfileLoading(){
+ const error=profileLoadError;
+ root.innerHTML=`<div class="auth"><div class="auth-card" role="status" aria-live="polite">
+   <div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div>
+   <h1>${error?'No pudimos consultar tu expediente':'Consultando tu expediente'}</h1>
+   <p>${error?'No mostraremos una etapa sin confirmar los datos de tu expediente.':'Obteniendo tu etapa, documentos y horas desde el expediente actualizado.'}</p>
+   ${error?`<div class="warning" style="margin:14px 0">${safe(error)}</div>`:`<div class="progress" style="margin:18px 0"><span style="width:38%;animation:loadBar 1.4s ease-in-out infinite alternate"></span></div>`}
+   <div class="buttons section"><button type="button" class="btn primary" id="retryProfile" ${syncing?'disabled':''}>${syncing?'Consultando…':error?'Reintentar consulta':'Consultar expediente'}</button><button type="button" class="btn" id="exitProfile">Salir</button></div>
+  </div></div>`;
+ const retry=root.querySelector('#retryProfile');if(retry)retry.onclick=()=>refreshStatus(true);
+ const exit=root.querySelector('#exitProfile');if(exit)exit.onclick=()=>{userId=null;profileReady=false;profileLoadError='';sessionStorage.removeItem(SESSION);render()};
+}
+function renderLogin(){root.innerHTML=`<div class="auth"><div class="auth-card"><div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><h1>Iniciar sesión</h1><p>Consulta y completa tus trámites</p><form id="login"><div class="field"><label for="ctl">Número de control</label><input id="ctl" inputmode="numeric" maxlength="8" autocomplete="username" required></div><div class="field"><label for="nip">NIP de cuatro dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></div><button class="btn primary full" type="submit">Iniciar sesión →</button><div id="loginError" aria-live="polite"></div></form></div></div>`;root.querySelector('#login').onsubmit=e=>{e.preventDefault();const c=root.querySelector('#ctl').value.trim(),n=root.querySelector('#nip').value.trim();if(!USERS[c]||USERS[c].nip!==n){root.querySelector('#loginError').innerHTML='<p class="error">Número de control o NIP incorrecto.</p>';return;}userId=c;profileReady=false;profileLoadError='';sessionStorage.setItem(SESSION,c);screen='inicio';messages=[];render();refreshStatus(false)}}
 function home(){
  if(!eligible()){
   const u=profile();
@@ -171,14 +185,42 @@ function accessKey(){let key='';try{key=sessionStorage.getItem('tecnm_ai_demo_ke
 async function assistantRequest(q,mode='chat'){const key=accessKey();const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},body:JSON.stringify({control:userId,question:q,mode})});const p=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)sessionStorage.removeItem('tecnm_ai_demo_key');throw new Error(p.error||`Error ${r.status}`)}if(p.perfil)sync(p.perfil);return p}
 function sync(perfil){if(String(perfil.control||'')!==userId)return;let u=profile();
  const etapa=String(perfil.etapa_portal||'').trim().toLowerCase();
- if(['no_elegible','registro','presentacion','aceptacion','bimestre1','bimestre2','bimestre3','cierre','constancia'].includes(etapa))u.stage=etapa;
+ const etapas=['no_elegible','registro','presentacion','aceptacion','bimestre1','bimestre2','bimestre3','cierre','constancia'];
+ if(!etapas.includes(etapa))return;
+ u.stage=etapa;
 for(const [from,to] of [['creditos_aprobados','approved'],['creditos_totales','total'],['actividad_actual','activity'],['periodo_habilitado','period'],['horas_acreditadas','hours']]){if(perfil[from]!==null&&perfil[from]!==undefined&&perfil[from]!==''&&Number.isFinite(Number(perfil[from])))u[to]=Number(perfil[from])}
  const mine=state();let updates=new Map();const history=Array.isArray(perfil.entregas_recientes)?perfil.entregas_recientes:[];for(let i=0;i<history.length;i++){let d=history[i];if(!d||!DOCS.some(x=>x.id===d.tipo_id))continue;if(d.expediente_id&&perfil.expediente_id&&String(d.expediente_id)!==String(perfil.expediente_id))continue;let id=d.tipo_id,ver=Number(d.version||0),row=Number(d.row_number||i);let old=updates.get(id);if(!old||ver>old.version||(ver===old.version&&row>old.row))updates.set(id,{...d,version:ver,row});}
  for(const [id,d] of updates)mine.docs[id]={...mine.docs[id],estado:norm(d.estado),documento_id:d.documento_id||'',version:d.version||0,observaciones:d.observaciones||'',archivo_drive_id:d.archivo_drive_id||''};
  if(perfil.estados_documentos&&typeof perfil.estados_documentos==='object')for(const [id,v] of Object.entries(perfil.estados_documentos)){if(!DOCS.some(d=>d.id===id)||updates.has(id))continue;const s=typeof v==='object'?v.estado:v;mine.docs[id]={...mine.docs[id],estado:norm(s)}}
- mine.updated=new Date().toISOString();save();}
-async function refreshStatus(manual){if(syncing)return;syncing=true;try{const response=await assistantRequest('Consulta de estado','status');if(!response.perfil)throw new Error('WF-01 no devolvió los datos de expediente.');lastSync=Date.now();if(manual)notice='Estados consultados en Google Sheets.';}catch(err){if(manual)notice='No se pudieron consultar los estados: '+err.message;}finally{syncing=false;render()}}
-function silentRefresh(){if(!userId||syncing||Date.now()-lastSync<20000)return;if(!sessionStorage.getItem('tecnm_ai_demo_key'))return;refreshStatus(false)}
+ mine.updated=new Date().toISOString();save();profileReady=true;profileLoadError='';}
+async function refreshStatus(manual){
+ if(!userId||syncing)return;
+ const targetUser=userId;
+ syncing=true;
+ if(!profileReady){profileLoadError='';render();}
+ try{
+   const response=await assistantRequest('Consulta de estado','status');
+   if(userId!==targetUser)return;
+   if(!response.perfil||!profileReady){
+     throw new Error('WF-01 no devolvió una etapa_portal válida para este expediente.');
+   }
+   lastSync=Date.now();
+   if(manual)notice='Estados consultados en Google Sheets.';
+ }catch(err){
+   if(userId!==targetUser)return;
+   if(!profileReady)profileLoadError=err.message;
+   else if(manual)notice='No se pudieron consultar los estados: '+err.message;
+ }finally{
+   syncing=false;
+   if(userId===targetUser)render();
+ }
+}
+function silentRefresh(){
+ if(!userId||syncing||Date.now()-lastSync<20000)return;
+ // No pedir una clave mediante un diálogo inesperado en cada apertura.
+ if(!sessionStorage.getItem('tecnm_ai_demo_key'))return;
+ refreshStatus(false);
+}
 function estadoDeterminista(){
  if(!eligible())return `Según los créditos registrados, no cumples todavía el mínimo del 70% para iniciar Servicio Social. Actualmente tienes ${profile().approved} de ${profile().total} créditos aprobados. No necesitas subir documentos por ahora.`;
  const p=latestPeriod(),id=currentStep(),s=stepInfo(id);
