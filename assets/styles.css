@@ -10,3 +10,46 @@
 /* Trámites del estudiante: navegación ligera y estados por documento */
 .route-list{display:grid;gap:0}.route-step{display:grid;grid-template-columns:38px minmax(0,1fr);gap:15px;padding:20px 0;border-bottom:1px solid var(--line)}.route-step:last-child{border:0}.route-number{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#e7f0f8;color:#194875;font-size:14px;font-weight:800}.route-current{background:#f0f8fd;border-radius:16px;padding:18px 12px}.route-current .route-number{background:#126aaf;color:white}.route-content{min-width:0}.route-content>p{margin:8px 0 12px}.route-content .row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.doc-list{margin-top:6px}.docentry{padding:20px 0;border-bottom:1px solid var(--line)}.docentry:last-child{border-bottom:0}.docentry.dimmed{opacity:.65}.docentry .buttons{flex-wrap:wrap}.docentry .buttons .btn{flex:1;min-width:170px}.route-list .buttons{margin-top:7px}.pill{white-space:nowrap}.docentry-title{line-height:1.5}.soft{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}.container .card{overflow-wrap:anywhere}@media(max-width:700px){.route-step{grid-template-columns:33px minmax(0,1fr);gap:10px;padding:16px 0}.route-number{width:31px;height:31px}.route-current{padding:14px 8px}.route-content .buttons .btn{min-width:0}.docentry .buttons .btn{min-width:135px}.head-inner .brand b{font-size:14px}.head-inner .brand small{font-size:10px}}
 .doc-section{margin-top:18px}.doc-section summary{cursor:pointer;list-style:none;align-items:center;gap:15px;padding:2px 0}.doc-section summary::-webkit-details-marker{display:none}.doc-section summary h2{margin:0}.doc-section summary::after{content:'⌄';font-size:22px;color:#246caa;margin-left:6px}.doc-section[open] summary::after{content:'⌃'}.doc-section .doc-list{margin-top:13px;border-top:1px solid var(--line)}.doc-section .docentry:first-child{padding-top:20px}
+
+/* Navegación unificada: limpia en escritorio, cómoda en celular. */
+.tabs{border-bottom:1px solid #e2eaf3;background:rgba(255,255,255,.95)}
+.tabs-inner{max-width:1160px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px}
+.nav-tab{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:10px 20px;border:1px solid transparent;border-radius:13px;background:transparent;color:#496781;font-size:13px;font-weight:750;transition:background .15s,box-shadow .15s,color .15s}
+.nav-tab:hover{background:#f0f6fb;color:#0c4d89}
+.nav-tab.active{background:#e7f2fb;border-color:#d3e5f5;color:#0c538f;box-shadow:inset 0 0 0 1px #e7f2fb}
+.nav-icon{width:19px;height:19px;flex:none}
+.page-intro{align-items:flex-start;flex-wrap:wrap;margin-bottom:20px}
+.page-intro .lead{margin-bottom:0;max-width:650px}
+.current-docs{padding:25px 28px}
+.current-docs-head{margin-bottom:13px;align-items:flex-start}
+.current-docs-head strong{font-size:15px;color:var(--navy)}
+.current-docs-head p{margin:6px 0 0}
+.current-docs>.doc-list{margin-top:10px}
+.current-docs .docentry{padding:22px 0}
+.current-docs .docentry:last-child{padding-bottom:3px}
+.under-content{font-size:12px;color:var(--muted);margin:18px 4px}
+.text-link{border:0;background:none;padding:0;color:#0c609f;font-size:12px;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.route-card{padding:10px 28px}
+.route-step{padding:18px 4px}
+.route-current{padding:18px 14px;margin:0 -10px;background:#edf6fd;border:1px solid #dbeaf6}
+.route-past{opacity:.8}
+.route-content>p.route-hint{font-size:11px;color:#4c7899;margin:4px 0 0}
+.route-content>p.muted{margin-bottom:4px}
+.compact-summary h2{margin-bottom:5px}
+.compact-summary p{margin:0}
+.bottom-nav .nav-tab{border-radius:13px}
+@media(max-width:650px){
+ .tabs{display:none}
+ .bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+ .bottom-nav .nav-tab{min-height:58px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 2px;font-size:10px;line-height:1.2}
+ .bottom-nav .nav-tab.active{background:#e6f3fc;color:#08538f;border:0}
+ .bottom-nav .nav-icon{height:21px;width:21px}
+ .current-docs{padding:18px 17px}
+ .current-docs-head{align-items:center}
+ .route-card{padding:8px 18px}
+ .route-current{margin:0 -7px;padding:14px 10px}
+ .page-intro{gap:12px}
+ .page-intro #refreshDocuments{width:100%}
+ .compact-summary .row{align-items:start;flex-direction:column}
+ .compact-summary .btn{width:100%}
+}

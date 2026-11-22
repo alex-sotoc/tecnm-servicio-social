@@ -1,4 +1,4 @@
-// functions/api/upload.js — demostración con PDF ficticios.
+// functions/api/upload.js — recepción de archivos PDF con identificador rastreable.
 // El navegador envía multipart/form-data; al webhook enviamos el PDF binario puro.
 const HEADERS = {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 const answer = (obj, status=200) => new Response(JSON.stringify(obj), {status,headers:HEADERS});
@@ -36,7 +36,8 @@ export async function onRequestPost({request,env}) {
   if(!String(file.name||'').toLowerCase().endsWith('.pdf'))return answer({ok:false,error:'Solo se admiten archivos PDF.'},415);
   let bytes=new Uint8Array(await file.arrayBuffer());
   if(String.fromCharCode(...bytes.slice(0,5))!=='%PDF-')return answer({ok:false,error:'El archivo no tiene una cabecera PDF válida.'},415);
-  const uploadId=crypto.randomUUID();
+  const supplied=String(form.get('upload_id')||'').trim();
+  const uploadId=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(supplied)?supplied:crypto.randomUUID();
   const safeName=String(file.name||'archivo.pdf').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-100);
   const controller=new AbortController();
   const t=setTimeout(()=>controller.abort(),25000);
