@@ -37,7 +37,7 @@ function documentCard(d){let on=canOffer(d),status=docState(d);const action=d.ac
 function documents(){let list=DOCS.filter(x=>x.required&&x.action!=='internal');let active=list.filter(canOffer),later=list.filter(x=>!canOffer(x));let generated=DOCS.filter(x=>x.action==='generated');return `<div class="row"><div><h1 class="heading">Documentos</h1><p class="lead">Encuentra formatos, documentos institucionales y las entregas correspondientes a tu etapa.</p></div></div><div class="card"><h2>Documentos disponibles ahora</h2>${active.length?active.map(documentCard).join(''):'<p class="muted small">No hay entregas habilitadas para tu actividad actual.</p>'}</div><div class="card section"><h2>Documentos emitidos por Vinculación</h2><p class="muted small">La carta de presentación y la constancia se generan desde el área institucional. No debes elaborarlas ni subirlas por tu cuenta.</p>${generated.map(d=>`<div class="tile"><div><strong>${esc(d.name)}</strong><small>${esc(d.tip)}</small></div>${canOffer(d)?'<span class="pill yellow">Pendiente de emisión</span>':'<span class="pill gray">No disponible</span>'}</div>`).join('')}</div><details class="card section"><summary><strong>Ver documentos de otras etapas</strong></summary><p class="muted small">Puedes consultar los requisitos, pero no descargar o subir documentos fuera de tu etapa.</p>${later.map(documentCard).join('')}</details>`}
 function avance(){const a=step();return `<h1 class="heading">Mi avance</h1><p class="lead">El Servicio Social tiene 16 actividades agrupadas en cuatro momentos. Cada una tiene un responsable específico.</p><div class="four-moments">${GROUPS.map((g,i)=>`<button class="moment ${a>=g.start&&a<=g.end?'now':''}" data-focus="${i}"><span class="moment-num">${i+1}</span><strong>${g.name}</strong><small>${g.start}–${g.end}</small></button>`).join('')}</div><div class="card section"><h2>Las 16 actividades del procedimiento</h2><div class="activity-list">${STAGES.filter(s=>activeGroup===null||groupFor(s.num)===GROUPS[activeGroup]).map(s=>`<div class="activity ${s.num===a?'current':''}"><span class="activity-num">${s.num}</span><div><strong>${esc(s.title)}</strong><small>${esc(s.owner)} · ${s.num<a?'Actividad anterior':s.num===a?'Actividad actual':'Próxima actividad'}</small><p class="muted small">${esc(s.text)}</p></div></div>`).join('')}</div>${activeGroup!==null?'<button class="btn" id="showall">Ver las 16 actividades</button>':''}</div><div class="card section"><h2>Horas acreditadas</h2><div class="progress-label"><strong>${data().hours} / 500 horas</strong><span>${Math.round(data().hours/500*100)} %</span></div><div class="progress"><span style="width:${Math.min(100,data().hours/500*100)}%"></span></div><p class="muted small">Las horas corresponden a reportes aceptados y no pueden ser modificadas desde esta pantalla.</p></div>`}
 function avisos(){return `<h1 class="heading">Avisos y recordatorios</h1><p class="lead">Mantente al corriente de tus documentos y próximas actividades.</p><div class="two"><article class="card"><h2>Próximas actividades</h2><div class="warning">${esc(currentAction())}</div><div class="tile"><div><strong>Tu etapa</strong><small>${esc(groupFor(step()).name)} · Actividad ${step()}</small></div><button class="btn" data-page="avance">Ver avance</button></div></article><article class="card"><h2>Notificaciones por Telegram</h2><p class="muted small">El asistente podrá enviarte recordatorios y avisos de documentos cuando vincules Telegram.</p><button class="btn primary" data-telegram="1">Vincular Telegram</button></article></div>`}
-function assistant(){if(chat.length===0)chat.push({role:'assistant',text:`Hola, ${u().name.split(' ')[0]}. Te ayudaré a completar el Servicio Social paso a paso. ${currentAction()}`});return `<h1 class="heading">Asistente de Servicio Social</h1><p class="lead">Orientación para cada actividad, formatos y documentos que necesitas entregar.</p><div class="two"><article class="card chat-card"><h2>✦ ¿En qué puedo ayudarte?</h2><div class="chat-chips">${['¿Qué tengo que hacer ahora?','¿Quién emite la carta de aceptación?','¿Cómo registro mis horas?','¿Qué formatos puedo descargar?','¿Cómo vinculo Telegram?'].map(x=>`<button class="btn" data-chat="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="chat-list" id="chatList">${chat.map(m=>`<div class="bubble ${m.role}">${esc(m.text)}</div>`).join('')}</div><form class="chat-form" id="chatForm"><input id="question" placeholder="Escribe tu pregunta…" autocomplete="off"><button class="btn primary" type="submit" aria-label="Enviar">➤</button></form></article><article class="card"><h2>Tu situación actual</h2><div class="tile"><div><strong>Actividad ${step()} de 16</strong><small>${esc(STAGES[step()-1].title)}</small></div><span class="pill blue">Actual</span></div><p class="muted small">${esc(currentAction())}</p><div class="buttons"><button class="btn primary" data-page="documentos">Abrir documentos</button><button class="btn" data-page="avance">Ver etapas</button></div><hr style="border:0;border-top:1px solid #e1eaf2;margin:22px 0"><h2>Cuando subas un archivo</h2><p class="muted small">El servicio documental lo enviará al análisis para identificar el tipo, revisar requisitos y devolverte observaciones. La recepción automática estará disponible al conectar n8n.</p></article></div>`}
+function assistant(){if(chat.length===0)chat.push({role:'assistant',text:`Hola, ${u().name.split(' ')[0]}. Te ayudaré a completar el Servicio Social paso a paso. ${currentAction()}`});return `<h1 class="heading">Asistente de Servicio Social</h1><p class="lead">Orientación para cada actividad, formatos y documentos que necesitas entregar.</p><div class="two"><article class="card chat-card"><h2>✦ ¿En qué puedo ayudarte?</h2><div class="chat-chips">${['¿Qué tengo que hacer ahora?','¿Quién emite la carta de aceptación?','¿Cómo registro mis horas?','¿Qué formatos puedo descargar?','¿Cómo vinculo Telegram?'].map(x=>`<button class="btn" data-chat="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="chat-list" id="chatList">${chat.map(m=>`<div class="bubble ${m.role}">${esc(m.text)}</div>`).join('')}</div><form class="chat-form" id="chatForm"><input id="question" placeholder="Escribe tu pregunta…" autocomplete="off"><button class="btn primary" type="submit" aria-label="Enviar">➤</button></form></article><article class="card"><h2>Tu situación actual</h2><div class="tile"><div><strong>Actividad ${step()} de 16</strong><small>${esc(STAGES[step()-1].title)}</small></div><span class="pill blue">Actual</span></div><p class="muted small">${esc(currentAction())}</p><div class="buttons"><button class="btn primary" data-page="documentos">Abrir documentos</button><button class="btn" data-page="avance">Ver etapas</button></div><hr style="border:0;border-top:1px solid #e1eaf2;margin:22px 0"><h2>Cuando subas un archivo</h2><p class="muted small">El servicio documental lo enviará al análisis para identificar el tipo, revisar requisitos y devolverte observaciones. Los documentos recibidos se analizan en n8n. Si hay errores, te explicaré las observaciones cuando el resultado esté disponible.</p></article></div>`}
 let sendingAI=false;
 function syncFromSheet(perfil){
  if(!perfil || String(perfil.control)!==control)return;
@@ -105,8 +105,51 @@ try{
  const response=await fetch('/api/upload',{method:'POST',headers:{'X-Demo-Access':gate.trim()},body:form});
  const result=await response.json().catch(()=>({error:'El servidor devolvió una respuesta inválida.'}));
  if(!response.ok||result.ok!==true){if(response.status===401)try{sessionStorage.removeItem('tecnm_ai_demo_key')}catch{};throw new Error(result.error||'No fue posible entregar el documento.')}
- target.innerHTML='<div class="success">Archivo recibido. El análisis puede continuar en segundo plano. Consulta después el resultado en Documentos o pregunta al asistente.</div>';
+ // La recepción no es aprobación. Abrimos el chat y consultamos la entrega específica.
+ const uploadId=String(result.upload_id||'');
+ const title=DOCS.find(d=>d.id===select.value)?.name||'documento';
+ const pendingMessage={role:'assistant',text:`Recibí tu archivo «${title}». Ahora voy a revisar si corresponde al formato solicitado y si contiene errores. Puedes seguir usando el asistente mientras termina el análisis.`,uploadId};
+ chat.push(pendingMessage);
+ page='asistente';selected=null;flash='';render();
+ window.scrollTo({top:0,behavior:'instant'});
+ const chatList=document.getElementById('chatList');if(chatList)chatList.scrollTop=chatList.scrollHeight;
+ if(uploadId)pollDocumentResult(uploadId);
 }catch(err){target.innerHTML=`<div class="error">${esc(err.message||'Error de conexión')}</div>`}}}
+
+// Consulta solo la rama status de WF-01; no llama a Gemini en cada intento.
+const uploadPolls=new Set();
+async function pollDocumentResult(uploadId){
+ if(uploadPolls.has(uploadId))return;
+ uploadPolls.add(uploadId);
+ const maxAttempts=12;
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  if(!control)break;
+  if(attempt)await new Promise(resolve=>setTimeout(resolve,7000));
+  try{
+   const result=await callAssistant('Consultar estado del expediente','status');
+   const history=Array.isArray(result.perfil?.entregas_recientes)?result.perfil.entregas_recientes:[];
+   const document=history.find(d=>String(d.documento_id)===uploadId);
+   if(!document)continue; // WF-01 podría no estar devolviendo entregas_recientes todavía.
+   const status=String(document.estado||'').toUpperCase();
+   if(['EN_REVISION','PENDIENTE',''].includes(status))continue;
+   const observations=String(document.observaciones||'').trim();
+   const labels={OBSERVADO:'Encontré observaciones',REVISION_REQUERIDA:'Es necesaria una verificación adicional',ACEPTADO:'Documento aceptado según el registro'};
+   const message=(labels[status]||'El resultado del documento está disponible')+'.'+(observations?' '+observations:'')+
+       (status==='OBSERVADO'?' Corrige el archivo y vuelve a enviarlo cuando corresponda.':'');
+   const item=chat.find(m=>m.uploadId===uploadId);
+   if(item){item.text=message;delete item.uploadId;}
+   if(page==='asistente')render();
+   uploadPolls.delete(uploadId);return;
+  }catch(e){
+   // Un error transitorio no debe borrar la confirmación de recepción.
+  }
+ }
+ const item=chat.find(m=>m.uploadId===uploadId);
+ if(item){item.text+=' El análisis puede continuar en segundo plano. Si no aparece el resultado, consulta más tarde el expediente o pregunta por tu documento.';delete item.uploadId;}
+ if(page==='asistente')render();
+ uploadPolls.delete(uploadId);
+}
+
 async function download(id){const d=DOCS.find(x=>x.id===id);if(!d||!canOffer(d)||!d.path)return;const tries=[d.path,d.fallback].filter(Boolean);let err='El formato todavía no está disponible.';for(const name of tries){try{let r=await fetch('formatos/'+name,{cache:'no-store'});if(!r.ok)continue;let b=await r.blob();if(!b.size)continue;let obj=URL.createObjectURL(b);let a=document.createElement('a');a.href=obj;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),2000);return;}catch(e){err='No fue posible descargar el formato.'}}flash=err+' Comunícate con Vinculación para obtenerlo.';render()}
 render();refreshStatusSilent();
 })();
