@@ -1,189 +1,110 @@
 (()=>{
 'use strict';
-const ROOT=document.getElementById('app'), KEY='ss_ui_avance_v3',SESSION='tecnm_estudiante_sesion_v1';
-const C=window.SS_CATALOGO,STAGES=C.stages,DOCS=C.documents;
+const root=document.getElementById('app');
+const CAT=window.SS_CATALOGO;
+const PASOS=CAT.pasos,DOCS=CAT.documentos;
+const SESSION='tecnm_estudiante_sesion_v1';
+const CACHE='ss_portal_tramites_v1';
+const LEGACY='ss_ui_avance_v3';
 const USERS={
-'24660001':{name:'Ana Sofía Ramírez',nip:'1234',approved:190,total:250,activity:10,period:2,exp:'EXP-001',institution:'Centro Comunitario de Servicio Social',career:'Ingeniería en Sistemas Computacionales'},
-'24660002':{name:'Luis Herrera',nip:'2345',approved:150,total:250,activity:1,period:0,exp:'EXP-002',institution:'',career:'Ingeniería en Sistemas Computacionales'},
-'24660003':{name:'Mariana Torres',nip:'3456',approved:175,total:250,activity:2,period:0,exp:'EXP-003',institution:'',career:'Ingeniería Industrial'}};
-const SEED={'24660001':{docs:{solicitud:'ACEPTADO',compromiso:'ACEPTADO',asignacion:'ACEPTADO',plan:'ACEPTADO',aceptacion:'ACEPTADO',reporte1:'ACEPTADO'},hours:160},'24660002':{docs:{},hours:0},'24660003':{docs:{},hours:0}};
-const GROUPS=[{name:'Inicio y registro',start:1,end:3},{name:'Presentación y aceptación',start:4,end:7},{name:'Ejecución y seguimiento',start:8,end:11},{name:'Terminación',start:12,end:16}];
-let control=readSession(),page='inicio',selected=null,activeGroup=null,flash='',chat=[],records=load();
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(records))}catch{}}
-function readSession(){try{let c=sessionStorage.getItem(SESSION);return USERS[c]?c:null}catch{return null}}
-function writeSession(c){try{if(c)sessionStorage.setItem(SESSION,c);else sessionStorage.removeItem(SESSION)}catch{}}
-function u(){return USERS[control]}
-function data(){if(!records[control])records[control]=JSON.parse(JSON.stringify(SEED[control]||{docs:{},hours:0}));return records[control]}
-function good(){return u().approved*10>=u().total*7}
-function step(){return good()?u().activity:1}
-function groupFor(n){return GROUPS.find(g=>g.start<=n&&n<=g.end)||GROUPS[0]}
-function docState(d){return data().docs[d.id]||'PENDIENTE'}
-function stateBadge(s){const x={ACEPTADO:['Aceptado','green'],VALIDADO_TECNICAMENTE:['Validado técnicamente','green'],OBSERVADO:['Con observaciones','red'],REVISION_REQUERIDA:['Revisión requerida','yellow'],DOCUMENTO_INCORRECTO:['Documento incorrecto','red'],EN_REVISION:['En revisión','yellow'],PENDIENTE:['Pendiente','gray']};const z=x[s]||x.PENDIENTE;return `<span class="pill ${z[1]}">${z[0]}</span>`}
-function docPeriod(d){const m=/^(?:reporte|eval|autoeval)([123])$/.exec(d.id);return m?Number(m[1]):Number(d.period||0)}
-function canOffer(d){const p=docPeriod(d);return good() && step()>=d.start && step()<=d.finish && (!p||u().period===p)}
-function canSubmit(d){return canOffer(d) && (d.action==='upload'||d.action==='external') && !['ACEPTADO','EN_REVISION','REVISION_REQUERIDA'].includes(docState(d))}
-function nav(){return [['inicio','⌂','Inicio'],['documentos','▤','Documentos'],['avance','◷','Avance'],['avisos','♧','Avisos']]}
-function brand(){return `<div class="brand"><div class="emblem" aria-hidden="true">T</div><div><b>TecNM · Servicio Social</b><small>Campus Matehuala</small></div></div>`}
-function login(){ROOT.innerHTML=`<div class="auth"><div class="auth-card">${brand()}<h1>Iniciar sesión</h1><p>Accede a tu expediente de Servicio Social</p><form id="login" novalidate><div class="field"><label for="id">Número de control</label><input id="id" inputmode="numeric" maxlength="8" autocomplete="username" placeholder="Número de control" required></div><div class="field"><label for="nip">NIP de 4 dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="Ingresa tu NIP" required></div><button type="submit" class="btn primary full">Iniciar sesión →</button><div id="error" role="alert"></div></form></div></div>`;const form=document.querySelector('#login');for(let id of ['id','nip'])document.getElementById(id).addEventListener('input',e=>e.target.value=e.target.value.replace(/\D/g,'').slice(0,id==='nip'?4:8));form.onsubmit=e=>{e.preventDefault();let id=document.getElementById('id').value,nip=document.getElementById('nip').value;if(!/^\d{8}$/.test(id)||!/^\d{4}$/.test(nip)||!USERS[id]||USERS[id].nip!==nip){document.querySelector('#error').innerHTML='<div class="error">Número de control o NIP incorrecto.</div>';return;}control=id;writeSession(id);page='inicio';chat=[];render();refreshStatusSilent()}}
-function goto(p,d){page=p;selected=d||null;flash='';render();refreshStatusSilent();window.scrollTo({top:0,behavior:'instant'})}
-function buttonNav([k,ic,label],mobile){return `<button data-page="${k}" class="${mobile?'':'tab '}${page===k?'active':''}"><span>${ic}</span>${label}</button>`}
-function render(){if(!control){login();return;}const content=({inicio:home,documentos:documents,avance:avance,avisos:avisos,asistente:assistant,subir:upload})[page]||home;ROOT.innerHTML=`<div class="app"><header class="head"><div class="head-inner">${brand()}<div class="head-right"><span>${esc(u().name.split(' ')[0])}</span><button id="logout">Cerrar sesión ↗</button></div></div></header><nav class="tabs"><div class="tabs-inner">${nav().map(x=>buttonNav(x,false)).join('')}</div></nav><main class="container">${flash?`<div class="notice">${esc(flash)}</div>`:''}${content()}</main><button class="fab" data-page="asistente" title="Abrir asistente" aria-label="Abrir asistente">✦</button><nav class="bottom-nav">${nav().map(x=>buttonNav(x,true)).join('')}</nav></div>`;document.querySelector('#logout').onclick=()=>{control=null;writeSession(null);render()};document.querySelectorAll('[data-page]').forEach(x=>x.onclick=()=>goto(x.dataset.page));document.querySelectorAll('[data-chat]').forEach(x=>x.onclick=()=>{let v=x.dataset.chat;goto('asistente');ask(v)});document.querySelectorAll('[data-doc]').forEach(x=>x.onclick=()=>goto('documentos',x.dataset.doc));document.querySelectorAll('[data-submitdoc]').forEach(x=>x.onclick=()=>goto('subir',x.dataset.submitdoc));document.querySelectorAll('[data-get]').forEach(x=>x.onclick=()=>download(x.dataset.get));document.querySelectorAll('[data-focus]').forEach(x=>x.onclick=()=>{activeGroup=+x.dataset.focus;render()});document.querySelectorAll('[data-telegram]').forEach(x=>x.onclick=()=>{flash='La vinculación de Telegram se habilitará desde el portal cuando el servicio esté configurado.';render()});attachChat();attachUpload();const refreshBtn=document.getElementById('refreshDocuments');if(refreshBtn)refreshBtn.onclick=refreshDocumentsNow;}
-function currentAction(){const a=step();if(!good())return 'Necesitas reunir al menos el 70 % de créditos antes de iniciar el Servicio Social.';if(a===2)return 'Completa la solicitud, carta compromiso, carta de asignación y plan de trabajo.';if(a>=3&&a<=5)return 'Espera la carta de presentación de Vinculación y entrégala a la instancia receptora.';if(a===6||a===7)return 'Solicita a la instancia receptora la carta de aceptación firmada y sellada, y súbela al portal.';if(a===11)return 'Los documentos del bimestre están revisados. El seguimiento debe cerrarse y confirmarse para habilitar el próximo periodo o iniciar el cierre del servicio.';if(a>=8&&a<=10)return 'Prepara el reporte bimestral, evaluación y autoevaluación; solicita firmas a la instancia y entrégalos.';return STAGES[a-1].text;}
-function nextDocs(){return DOCS.filter(x=>canOffer(x)&&(x.action==='upload'||x.action==='external')&&docState(x)!=='ACEPTADO')}
-function home(){let h=data().hours,g=groupFor(step());return `<div class="hero"><p class="eyebrow">Tu ruta de Servicio Social</p><h1>¡Hola, ${esc(u().name.split(' ')[0])}!</h1><p>El asistente de IA te ayudará a completar tu Servicio Social, paso a paso, con documentos, fechas y orientación para cada actividad.</p><div class="buttons" style="margin-top:18px"><button class="btn primary" data-page="asistente">✦ Hablar con mi asistente</button><button class="btn" data-page="avance">Ver mi avance →</button></div></div><div class="two"><article class="card"><h2>◷ En qué etapa estás</h2><div class="status-hero">${esc(g.name)}</div><p class="muted small">Actividad ${step()} de 16 · ${esc(STAGES[step()-1].title)}</p></article><article class="card"><h2>♧ Elegibilidad y horas</h2><div class="row"><strong>${good()?'✓ Elegible':'◷ Aún no elegible'}</strong><span>${Math.round(u().approved/u().total*100)} % de créditos</span></div><div class="progress" style="margin:15px 0"><span style="width:${Math.min(100,data().hours/500*100)}%"></span></div><div class="row"><span class="muted small">Horas de reportes aceptados</span><strong>${h} / 500 h</strong></div></article></div><div class="two section"><article class="card"><h2>Tu siguiente paso</h2><p>${esc(currentAction())}</p><div class="buttons"><button class="btn primary" data-page="documentos">Ver documentos habilitados</button></div></article><article class="card"><h2>✦ Tu asistente te guía</h2><p class="muted small">Pregúntale qué hacer ahora, qué formato necesitas o a quién debes solicitar un documento.</p><div class="buttons"><button class="btn" data-chat="¿Qué tengo que hacer ahora?">¿Qué sigue?</button><button class="btn" data-chat="¿Qué documentos puedo entregar?">Mis documentos</button></div></article></div>`}
-function labelAction(d){return d.action==='generated'?'Emite Vinculación':d.action==='external'?'Emite la instancia':d.action==='internal'?'Registro interno':'Lo prepara el estudiante'}
-function documentCard(d){let on=canOffer(d),status=docState(d);const action=d.action==='generated'?`<span class="pill blue">Documento institucional</span>`:d.action==='external'?`<span class="pill blue">Solicitar a la instancia</span>`:d.action==='internal'?`<span class="pill gray">Interno</span>`:'';let buttons='';if(on){if(d.path)buttons+=`<button class="btn" data-get="${d.id}">↓ Descargar formato</button>`;if(canSubmit(d))buttons+=`<button class="btn primary" data-submitdoc="${d.id}">↑ Subir documento</button>`;if(d.action==='generated')buttons+=`<span class="muted small">Se habilitará al emitirse desde Vinculación.</span>`;}else buttons='<span class="muted small">Se habilitará en la etapa correspondiente.</span>';return `<div class="docentry ${on?'':'dimmed'}"><div class="row" style="gap:12px;align-items:start"><div><div class="docentry-title">▤ ${esc(d.name)}</div><div class="muted small">${esc(labelAction(d))} · ${esc(d.code)}</div></div>${on?stateBadge(status):'<span class="pill gray">No habilitado</span>'}</div><p class="muted small">${esc(d.tip)}</p><div class="buttons">${buttons}</div></div>`}
-function documents(){let list=DOCS.filter(x=>x.required&&x.action!=='internal');let active=list.filter(canOffer),completed=list.filter(x=>!canOffer(x)&&['ACEPTADO','VALIDADO_TECNICAMENTE'].includes(docState(x))),later=list.filter(x=>!canOffer(x)&&!completed.includes(x));let generated=DOCS.filter(x=>x.action==='generated');return `<div class="row"><div><h1 class="heading">Documentos</h1><p class="lead">Consulta las entregas de tu etapa y el estado registrado en el expediente.</p></div><button class="btn" id="refreshDocuments" type="button">↻ Actualizar estados</button></div><div class="card"><h2>Documentos disponibles ahora</h2>${active.length?active.map(documentCard).join(''):'<p class="muted small">No hay entregas habilitadas para tu actividad actual.</p>'}</div>${completed.length?`<div class="card section"><h2>Documentos de etapas o bimestres anteriores</h2><p class="muted small">Estos son los estados registrados en tu expediente; validado técnicamente no equivale a autorización institucional.</p>${completed.map(documentCard).join('')}</div>`:''}<div class="card section"><h2>Documentos emitidos por Vinculación</h2><p class="muted small">La carta de presentación y la constancia se generan desde el área institucional. No debes elaborarlas ni subirlas por tu cuenta.</p>${generated.map(d=>`<div class="tile"><div><strong>${esc(d.name)}</strong><small>${esc(d.tip)}</small></div>${canOffer(d)?'<span class="pill yellow">Pendiente de emisión</span>':'<span class="pill gray">No disponible</span>'}</div>`).join('')}</div><details class="card section"><summary><strong>Ver documentos de otras etapas</strong></summary><p class="muted small">Puedes consultar requisitos futuros, pero no entregar documentos fuera de tu etapa.</p>${later.map(documentCard).join('')}</details>`}
-function avance(){const a=step();return `<h1 class="heading">Mi avance</h1><p class="lead">El Servicio Social tiene 16 actividades agrupadas en cuatro momentos. Cada una tiene un responsable específico.</p><div class="four-moments">${GROUPS.map((g,i)=>`<button class="moment ${a>=g.start&&a<=g.end?'now':''}" data-focus="${i}"><span class="moment-num">${i+1}</span><strong>${g.name}</strong><small>${g.start}–${g.end}</small></button>`).join('')}</div><div class="card section"><h2>Las 16 actividades del procedimiento</h2><div class="activity-list">${STAGES.filter(s=>activeGroup===null||groupFor(s.num)===GROUPS[activeGroup]).map(s=>`<div class="activity ${s.num===a?'current':''}"><span class="activity-num">${s.num}</span><div><strong>${esc(s.title)}</strong><small>${esc(s.owner)} · ${s.num<a?'Actividad anterior':s.num===a?'Actividad actual':'Próxima actividad'}</small><p class="muted small">${esc(s.text)}</p></div></div>`).join('')}</div>${activeGroup!==null?'<button class="btn" id="showall">Ver las 16 actividades</button>':''}</div><div class="card section"><h2>Horas acreditadas</h2><div class="progress-label"><strong>${data().hours} / 500 horas</strong><span>${Math.round(data().hours/500*100)} %</span></div><div class="progress"><span style="width:${Math.min(100,data().hours/500*100)}%"></span></div><p class="muted small">Las horas corresponden a reportes aceptados y no pueden ser modificadas desde esta pantalla.</p></div>`}
-function avisos(){return `<h1 class="heading">Avisos y recordatorios</h1><p class="lead">Mantente al corriente de tus documentos y próximas actividades.</p><div class="two"><article class="card"><h2>Próximas actividades</h2><div class="warning">${esc(currentAction())}</div><div class="tile"><div><strong>Tu etapa</strong><small>${esc(groupFor(step()).name)} · Actividad ${step()}</small></div><button class="btn" data-page="avance">Ver avance</button></div></article><article class="card"><h2>Notificaciones por Telegram</h2><p class="muted small">El asistente podrá enviarte recordatorios y avisos de documentos cuando vincules Telegram.</p><button class="btn primary" data-telegram="1">Vincular Telegram</button></article></div>`}
-function assistant(){if(chat.length===0)chat.push({role:'assistant',text:`Hola, ${u().name.split(' ')[0]}. Te ayudaré a completar el Servicio Social paso a paso. ${currentAction()}`});return `<h1 class="heading">Asistente de Servicio Social</h1><p class="lead">Orientación para cada actividad, formatos y documentos que necesitas entregar.</p><div class="two"><article class="card chat-card"><h2>✦ ¿En qué puedo ayudarte?</h2><div class="chat-chips">${['¿Qué tengo que hacer ahora?','¿Quién emite la carta de aceptación?','¿Cómo registro mis horas?','¿Qué formatos puedo descargar?','¿Cómo vinculo Telegram?'].map(x=>`<button class="btn" data-chat="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="chat-list" id="chatList">${chat.map(m=>`<div class="bubble ${m.role}" style="white-space:pre-wrap">${esc(m.text)}</div>`).join('')}</div><form class="chat-form" id="chatForm"><input id="question" placeholder="Escribe tu pregunta…" autocomplete="off"><button class="btn primary" type="submit" aria-label="Enviar">➤</button></form></article><article class="card"><h2>Tu situación actual</h2><div class="tile"><div><strong>Actividad ${step()} de 16</strong><small>${esc(STAGES[step()-1].title)}</small></div><span class="pill blue">Actual</span></div><p class="muted small">${esc(currentAction())}</p><div class="buttons"><button class="btn primary" data-page="documentos">Abrir documentos</button><button class="btn" data-page="avance">Ver etapas</button></div><hr style="border:0;border-top:1px solid #e1eaf2;margin:22px 0"><h2>Cuando subas un archivo</h2><p class="muted small">El servicio documental lo enviará al análisis para identificar el tipo, revisar requisitos y devolverte observaciones. Los documentos recibidos se analizan en n8n. Si hay errores, te explicaré las observaciones cuando el resultado esté disponible.</p></article></div>`}
-let sendingAI=false;
-function syncFromSheet(perfil){
- if(!perfil || String(perfil.control)!==control)return;
- const user=u();
- const approved=Number(perfil.creditos_aprobados), total=Number(perfil.creditos_totales);
- const activity=Number(perfil.actividad_actual), period=Number(perfil.periodo_habilitado), hours=Number(perfil.horas_acreditadas);
- if(perfil.creditos_aprobados!==null&&perfil.creditos_aprobados!==undefined&&Number.isFinite(approved)&&approved>=0)user.approved=approved;
- if(Number.isFinite(total)&&total>0)user.total=total;
- if(Number.isInteger(activity)&&activity>=1&&activity<=16)user.activity=activity;
- if(Number.isInteger(period)&&period>=0&&period<=3)user.period=period;
- if(perfil.horas_acreditadas!==null&&perfil.horas_acreditadas!==undefined&&Number.isFinite(hours)&&hours>=0)data().hours=hours;
- const estadosPermitidos=new Set(['ACEPTADO','VALIDADO_TECNICAMENTE','OBSERVADO','REVISION_REQUERIDA','DOCUMENTO_INCORRECTO','EN_REVISION','PENDIENTE']);
- const docs=data().docs;
- // Utilizar el historial de entregas del MISMO expediente que WF-01 ya consultó.
- // Ante varias versiones, seleccionar la versión más reciente de cada tipo.
- if(Array.isArray(perfil.entregas_recientes)){
-   const recientes={};
-   perfil.entregas_recientes.forEach((d,index)=>{
-     if(!d||!d.tipo_id)return;
-     const id=String(d.tipo_id).trim();
-     if(!DOCS.some(x=>x.id===id))return;
-     const version=Number(d.version||0);
-     const previous=recientes[id];
-     if(!previous||version>previous.version||(version===previous.version&&index>previous.index)){
-       recientes[id]={version,index,estado:String(d.estado||'').toUpperCase()};
-     }
-   });
-   for(const [id,r] of Object.entries(recientes)){
-     if(estadosPermitidos.has(r.estado))docs[id]=r.estado;
-   }
+ '24660001':{name:'Ana Sofía Ramírez',nip:'1234',approved:190,total:250,period:2,activity:11,hours:160,exp:'EXP-001'},
+ '24660002':{name:'Luis Herrera',nip:'2345',approved:150,total:250,period:0,activity:1,hours:0,exp:'EXP-002'},
+ '24660003':{name:'Mariana Torres',nip:'3456',approved:175,total:250,period:0,activity:2,hours:0,exp:'EXP-003'}
+};
+let userId=null,screen='inicio',chosen=null,bimestreAbierto=null,notice='',messages=[],sending=false,syncing=false,lastSync=0,pendingUploads=new Set();
+const clone=v=>JSON.parse(JSON.stringify(v));
+const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=v=>String(v??'').trim().toUpperCase();
+function getStore(){try{return JSON.parse(localStorage.getItem(CACHE)||'{}')}catch{return {}}}
+const store=getStore();
+function save(){try{localStorage.setItem(CACHE,JSON.stringify(store))}catch{}}
+function profile(){return USERS[userId]}
+function state(){if(!store[userId])store[userId]={docs:{},updated:null,events:{}};return store[userId]}
+function eligible(){return profile() && profile().approved/profile().total>=.70}
+function status(d){return state().docs[d.id]?.estado||'PENDIENTE'}
+function docRecord(d){return state().docs[d.id]||null}
+function completed(d){return ['VALIDADO_TECNICAMENTE','ACEPTADO'].includes(status(d))}
+function issued(d){return ['EMITIDO','ACEPTADO','DISPONIBLE','ENTREGADO'].includes(status(d))}
+function stepDocs(id){return DOCS.filter(d=>d.paso===id)}
+function hasAll(id){return stepDocs(id).length>0 && stepDocs(id).every(d=>d.accion==='generated'?issued(d):completed(d))}
+function latestPeriod(){return Math.max(0,Math.min(3,Number(profile().period)||0))}
+function previousStep(id){return PASOS.findIndex(x=>x.id===id)}
+function historical(id){let a=Number(profile().activity)||0;let p=latestPeriod();if(id==='registro')return a>2;if(id==='presentacion')return a>=5;if(id==='aceptacion')return a>=8;if(/^bimestre/.test(id)){const n=Number(id.slice(-1));return p>n}return false}
+function stepInfo(id){let docs=stepDocs(id),total=docs.length,ready=docs.filter(d=>d.accion==='generated'?issued(d):completed(d)).length,hist=historical(id),period=latestPeriod(),number=Number(id.replace('bimestre',''));
+ let unlocked=eligible();
+ if(id==='registro')unlocked=eligible();
+ else if(id==='presentacion')unlocked=eligible()&&(hasAll('registro')||hist||Number(profile().activity)>=3);
+ else if(id==='aceptacion')unlocked=eligible()&&(issued(DOCS.find(d=>d.id==='presentacion'))||hist||Number(profile().activity)>=5);
+ else if(/^bimestre/.test(id))unlocked=eligible()&&(period>=number);
+ else if(id==='cierre')unlocked=eligible()&&(hasAll('bimestre3')||Number(profile().activity)>=12);
+ else if(id==='constancia')unlocked=eligible()&&(hasAll('cierre')||Number(profile().activity)>=15);
+ const done=total>0&&ready===total;
+ return {id,docs,ready,total,done,unlocked,hist,number};}
+function nextStep(){if(!eligible())return 'Debes cumplir el requisito de créditos para iniciar.';
+ const p=latestPeriod(),a=Number(profile().activity);
+ if(a>=12)return hasAll('cierre')?'Consulta la emisión de tu constancia.':'Completa los documentos de cierre y terminación.';
+ if(a>=8||p>=1){const id=`bimestre${Math.max(1,p)}`,s=stepInfo(id);return s.done ? (p<3?`El bimestre ${p} ya está validado documentalmente. La apertura del bimestre ${p+1} depende de la confirmación del periodo en el expediente.`:'Los tres bimestres están validados documentalmente. El cierre requiere verificar horas y duración.'):`Completa los ${s.total-s.ready} documentos pendientes del bimestre ${Math.max(1,p)}.`;}
+ for(const paso of PASOS.slice(0,3)){const s=stepInfo(paso.id);if(!s.done)return paso.detalle;}
+ return 'Consulta el avance de tu expediente.';}
+function badge(value){const names={ACEPTADO:['Aceptado','green'],VALIDADO_TECNICAMENTE:['Validado técnicamente','green'],OBSERVADO:['Con observaciones','red'],DOCUMENTO_INCORRECTO:['Documento incorrecto','red'],REVISION_REQUERIDA:['Revisión requerida','yellow'],EN_REVISION:['En revisión','yellow'],EMITIDO:['Emitido','blue'],DISPONIBLE:['Disponible','blue'],ENTREGADO:['Entregado','blue'],DESCARTADO:['Descartado','gray'],PENDIENTE:['Pendiente','gray']};const [name,cls]=names[norm(value)]||names.PENDIENTE;return `<span class="pill ${cls}">${name}</span>`}
+function render(){if(!userId){renderLogin();return;}const views={inicio:home,documentos:documents,avance:progress,avisos:alerts,asistente:assistant,subir:upload};root.innerHTML=`<div class="app"><header class="head"><div class="head-inner"><div class="brand"><div class="emblem" aria-hidden="true">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><div class="head-right"><span>${safe(profile().name.split(' ')[0])}</span><button id="logout">Salir ↗</button></div></div></header><nav class="tabs"><div class="tabs-inner">${nav().map(tab).join('')}</div></nav><main class="container">${notice?`<div class="notice">${safe(notice)}</div>`:''}${(views[screen]||home)()}</main><button class="fab" data-page="asistente" aria-label="Abrir asistente">✦</button><nav class="bottom-nav">${nav().map(x=>tab(x,true)).join('')}</nav></div>`;
+ const lg=root.querySelector('#logout');if(lg)lg.onclick=()=>{userId=null;sessionStorage.removeItem(SESSION);render()};
+ root.querySelectorAll('[data-page]').forEach(el=>el.onclick=()=>go(el.dataset.page));
+ root.querySelectorAll('[data-download]').forEach(el=>el.onclick=()=>downloadFormat(el.dataset.download));
+ root.querySelectorAll('[data-generated]').forEach(el=>el.onclick=()=>downloadIssued(el.dataset.generated));
+ root.querySelectorAll('[data-upload]').forEach(el=>el.onclick=()=>go('subir',el.dataset.upload));
+ root.querySelectorAll('[data-step]').forEach(el=>el.onclick=()=>{bimestreAbierto=el.dataset.step;go('avance')});
+ root.querySelectorAll('[data-continue]').forEach(el=>el.onclick=()=>advance(el.dataset.continue));
+ root.querySelectorAll('[data-ask]').forEach(el=>el.onclick=()=>{const q=el.dataset.ask;go('asistente');ask(q)});
+ root.querySelectorAll('[data-telegram]').forEach(el=>el.onclick=()=>{notice='La vinculación por Telegram se activará al conectar su automatización. Las consultas y entregas funcionan desde el portal.';render()});
+ let refresh=root.querySelector('#refreshDocuments');if(refresh)refresh.onclick=()=>refreshStatus(true);
+ let cf=root.querySelector('#chatForm');if(cf)cf.onsubmit=e=>{e.preventDefault();ask(root.querySelector('#question').value)};
+ let form=root.querySelector('#uploadform');if(form)wireUpload(form);
+}
+function nav(){return [['inicio','⌂','Inicio'],['documentos','▤','Documentos'],['avance','◷','Mi ruta'],['avisos','♧','Avisos']]}
+function tab(x,mobile=false){return `<button class="${mobile?'':'tab '}${screen===x[0]?'active':''}" data-page="${x[0]}"><span>${x[1]}</span>${x[2]}</button>`}
+function go(p,id){screen=p;chosen=id||null;notice='';render();window.scrollTo(0,0);if(p==='documentos'||p==='inicio'||p==='avance')silentRefresh()}
+function renderLogin(){root.innerHTML=`<div class="auth"><div class="auth-card"><div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><h1>Iniciar sesión</h1><p>Consulta y completa tus trámites</p><form id="login"><div class="field"><label for="ctl">Número de control</label><input id="ctl" inputmode="numeric" maxlength="8" autocomplete="username" required></div><div class="field"><label for="nip">NIP de cuatro dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></div><button class="btn primary full" type="submit">Iniciar sesión →</button><div id="loginError" aria-live="polite"></div></form></div></div>`;root.querySelector('#login').onsubmit=e=>{e.preventDefault();const c=root.querySelector('#ctl').value.trim(),n=root.querySelector('#nip').value.trim();if(!USERS[c]||USERS[c].nip!==n){root.querySelector('#loginError').innerHTML='<p class="error">Número de control o NIP incorrecto.</p>';return;}userId=c;sessionStorage.setItem(SESSION,c);screen='inicio';messages=[];render();refreshStatus(true)}}
+function home(){const period=latestPeriod(),s=period?stepInfo(`bimestre${period}`):stepInfo('registro'),name=profile().name.split(' ')[0],hours=profile().hours;return `<section class="hero"><p class="eyebrow">Mi Servicio Social</p><h1>¡Hola, ${safe(name)}!</h1><p>Tu asistente te acompaña con los formatos, las entregas y el siguiente paso de cada trámite.</p><div class="buttons section"><button class="btn primary" data-page="documentos">Ver mis documentos</button><button class="btn" data-page="asistente">✦ Preguntar al asistente</button></div></section><div class="two"><article class="card"><h2>Tu entrega actual</h2><div class="status-hero">${period?'Bimestre '+period:'Registro'}</div><p class="muted small">${s.ready} de ${s.total} documentos validados documentalmente</p><div class="progress"><span style="width:${s.total?s.ready/s.total*100:0}%"></span></div></article><article class="card"><h2>Horas acreditadas</h2><div class="progress-label"><strong>${hours} / 500 horas</strong><span>${Math.round(hours/500*100)}%</span></div><div class="progress"><span style="width:${Math.min(100,hours/500*100)}%"></span></div><p class="muted small">El total acreditado se obtiene del expediente, no de un registro manual.</p></article></div><div class="two section"><article class="card"><h2>¿Qué sigue?</h2><p>${safe(nextStep())}</p><button class="btn primary" data-page="avance">Ver mi ruta →</button></article><article class="card"><h2>Asistente de IA</h2><p>Consulta qué entregar y revisa las observaciones del documento recibido.</p><button class="btn" data-ask="¿Qué documentos me faltan realmente según mi expediente?">Consultar pendientes</button></article></div>`}
+function rowDocument(d){const rec=docRecord(d),st=rec?.estado||'PENDIENTE',p=stepInfo(d.paso),allowed=p.unlocked,completedOrWaiting=['VALIDADO_TECNICAMENTE','ACEPTADO','EN_REVISION','REVISION_REQUERIDA','EMITIDO','DISPONIBLE'].includes(st);let actions=[];
+ if(d.accion==='generated'){
+   if(issued(d))actions.push(`<button class="btn" data-generated="${d.id}">↓ Descargar documento emitido</button>`);
+   else actions.push(`<span class="muted small">Todavía no hay una emisión registrada en el expediente.</span>`);
+ }else{
+   if(d.archivo)actions.push(`<button class="btn" data-download="${d.id}">↓ Descargar formato</button>`);
+   if(allowed && (!completedOrWaiting||st==='OBSERVADO'||st==='DOCUMENTO_INCORRECTO'||st==='DESCARTADO'))actions.push(`<button class="btn primary" data-upload="${d.id}">↑ Subir documento</button>`);
+   else if(allowed&&completed(d))actions.push(`<span class="muted small">Documento registrado correctamente. No necesitas volver a subirlo.</span>`);
  }
- // Aceptar tanto {reporte2:'ESTADO'} como {reporte2:{estado:'ESTADO'}}.
- if(perfil.estados_documentos&&typeof perfil.estados_documentos==='object'){
-   for(const [id,value] of Object.entries(perfil.estados_documentos)){
-     const estado=String(typeof value==='object'&&value!==null?value.estado:value).toUpperCase().trim();
-     if(DOCS.some(d=>d.id===id)&&estadosPermitidos.has(estado))docs[id]=estado;
-   }
- }
- save();
+ return `<div class="docentry ${allowed?'':'dimmed'}"><div class="row" style="gap:12px;align-items:start"><div><div class="docentry-title">▤ ${safe(d.nombre)}</div><div class="muted small">${safe(d.emisor)} · ${safe(d.codigo)}</div></div>${badge(st)}</div><p class="muted small">${safe(d.instruccion)}</p>${rec?.observaciones&&['OBSERVADO','REVISION_REQUERIDA'].includes(st)?`<div class="soft">${safe(rec.observaciones).slice(0,450)}</div>`:''}<div class="buttons">${actions.join('')}</div></div>`}
+function documents(){const current=latestPeriod();return `<div class="row"><div><h1 class="heading">Documentos</h1><p class="lead">Abre un trámite para descargar o consultar sus documentos.</p></div><button class="btn" id="refreshDocuments">↻ Actualizar estados</button></div>${PASOS.map(p=>{const s=stepInfo(p.id);const opened=p.id===(current?`bimestre${current}`:'registro')||s.unlocked&&!s.done&& !current;return `<details class="card section doc-section" ${opened?'open':''}><summary class="row"><div><h2>${safe(p.nombre)}</h2><p class="muted small">${safe(p.detalle)}</p></div>${s.done?badge('VALIDADO_TECNICAMENTE'):s.hist?'<span class="pill gray">Etapa anterior</span>':s.unlocked?`<span class="pill blue">${s.ready}/${s.total} completos</span>`:'<span class="pill gray">No habilitado</span>'}</summary><div class="doc-list">${s.docs.map(rowDocument).join('')}</div></details>`}).join('')}`}
+function progress(){return `<h1 class="heading">Mi ruta de trámites</h1><p class="lead">Solo aparecen los trámites que debes completar. Las actividades administrativas no son pasos del estudiante.</p><article class="card"><div class="route-list">${PASOS.map((p,i)=>{const s=stepInfo(p.id),isCurrent= s.unlocked&&!s.done,summary=s.done?'Documentos completos':s.hist?'Trámite anterior: consulta su registro documental':s.unlocked?`${s.ready} de ${s.total} documentos verificados`:'Pendiente de habilitación',canContinue=s.done&&['presentacion','bimestre1','bimestre2','bimestre3'].includes(p.id),nextEnabled=/^bimestre/.test(p.id)&&latestPeriod()>Number(p.id.slice(-1));return `<div class="route-step ${isCurrent?'route-current':''}"><div class="route-number">${i+1}</div><div class="route-content"><div class="row"><strong>${safe(p.nombre)}</strong>${s.done?badge('VALIDADO_TECNICAMENTE'):s.unlocked?'<span class="pill blue">Disponible</span>':'<span class="pill gray">Pendiente</span>'}</div><p class="muted small">${safe(p.detalle)}</p><p class="muted small">${safe(summary)}</p><div class="buttons"><button class="btn" data-page="documentos">Ver archivos</button>${nextEnabled?'<button class="btn primary" data-page="documentos">Ver siguiente entrega →</button>':canContinue?`<button class="btn primary" data-continue="${p.id}">Solicitar siguiente paso →</button>`:''}</div></div></div>`}).join('')}</div></article><article class="card section"><h2>Horas acreditadas</h2><div class="progress-label"><strong>${profile().hours} / 500 horas</strong><span>${Math.round(profile().hours/500*100)} %</span></div><div class="progress"><span style="width:${Math.min(100,profile().hours/500*100)}%"></span></div><p class="muted small">Los documentos validados técnicamente no sustituyen la acreditación de horas ni las autorizaciones institucionales.</p></article>`}
+function alerts(){return `<h1 class="heading">Avisos y recordatorios</h1><p class="lead">Consulta tu siguiente trámite y la opción de vincular notificaciones.</p><div class="two"><article class="card"><h2>Próxima acción</h2><div class="warning">${safe(nextStep())}</div><button class="btn" data-page="avance">Ver mi ruta</button></article><article class="card"><h2>Telegram</h2><p class="muted small">Los recordatorios llegarán cuando se configure la vinculación del bot con tu expediente.</p><button class="btn" data-telegram="1">Vincular Telegram</button></article></div>`}
+function assistant(){if(messages.length===0)messages.push({role:'assistant',text:`Hola, ${profile().name.split(' ')[0]}. Soy tu asistente para completar los trámites. ${nextStep()}`});return `<h1 class="heading">Asistente de Servicio Social</h1><p class="lead">Orientación según tus documentos y tu periodo registrado.</p><div class="two"><article class="card chat-card"><h2>✦ ¿En qué puedo ayudarte?</h2><div class="chat-chips">${['¿Qué documentos me faltan?','¿Cuál es mi siguiente paso?','¿Cómo se contabilizan mis horas?'].map(q=>`<button class="btn" data-ask="${safe(q)}">${safe(q)}</button>`).join('')}</div><div class="chat-list" id="chatList">${messages.map(m=>`<div class="bubble ${m.role}" style="white-space:pre-wrap">${safe(m.text)}</div>`).join('')}</div><form id="chatForm" class="chat-form"><input id="question" placeholder="Escribe tu pregunta..." autocomplete="off"><button class="btn primary" type="submit">➤</button></form></article><article class="card"><h2>Tu situación actual</h2><p>${safe(nextStep())}</p><p class="muted small">Las observaciones técnicas vienen de WF-02 y los estados de WF-01. Una firma visible no demuestra su autenticidad.</p><button class="btn" data-page="documentos">Ver mis documentos</button></article></div>`}
+function upload(){const choices=DOCS.filter(d=>d.accion==='upload'||d.accion==='external').filter(d=>stepInfo(d.paso).unlocked&&!['ACEPTADO','VALIDADO_TECNICAMENTE','EN_REVISION','REVISION_REQUERIDA'].includes(status(d)));const selected=choices.find(x=>x.id===chosen)||choices[0];return `<h1 class="heading">Subir documento</h1><p class="lead">Selecciona el documento correcto. La IA revisará el PDF y mostrará sus observaciones.</p><article class="card form-card"><form id="uploadform"><div class="field"><label for="docSel">Tipo de documento</label><select id="docSel" required>${choices.map(d=>`<option value="${d.id}" ${selected?.id===d.id?'selected':''}>${safe(d.nombre)}</option>`).join('')}</select></div><p class="soft">${safe(selected?.instruccion||'No hay documentos habilitados para entrega.')}</p><div class="drop section"><div class="file-icon">⇧</div><p>Selecciona un archivo PDF</p><input class="file-input" id="fileInput" type="file" accept=".pdf,application/pdf"><button class="btn" id="choose" type="button">Elegir archivo</button><div id="fileName" class="filename"></div><p class="muted small">PDF · Máximo 4 MB</p></div><div class="buttons section"><button class="btn" type="button" data-page="documentos">Cancelar</button><button class="btn primary" type="submit" ${choices.length?'':'disabled'}>Enviar a revisión</button></div><div id="upMessage" aria-live="polite"></div></form></article>`}
+function wireUpload(f){const input=root.querySelector('#fileInput'),select=root.querySelector('#docSel');root.querySelector('#choose').onclick=()=>input.click();input.onchange=()=>root.querySelector('#fileName').textContent=input.files[0]?.name||'';select.onchange=()=>{chosen=select.value;render()};f.onsubmit=async e=>{e.preventDefault();const t=root.querySelector('#upMessage'),file=input.files[0],type=select.value;if(!file){t.innerHTML='<p class="error">Selecciona un PDF.</p>';return;}if(file.size>4*1024*1024||(!file.name.toLowerCase().endsWith('.pdf')&&file.type!=='application/pdf')){t.innerHTML='<p class="error">Solo PDF de hasta 4 MB.</p>';return;}t.innerHTML='<p class="notice">Enviando documento...</p>';try{const gate=accessKey(),form=new FormData();form.append('file',file);form.append('type',type);form.append('control',userId);const r=await fetch('/api/upload',{method:'POST',headers:{'X-Demo-Access':gate},body:form});const p=await r.json().catch(()=>({}));if(!r.ok||!p.ok)throw new Error(p.error||'No se confirmó la recepción.');state().docs[type]={estado:'EN_REVISION',documento_id:p.upload_id,version:0};save();messages.push({role:'assistant',text:`Recibí tu ${DOCS.find(d=>d.id===type)?.nombre}. El análisis continúa y consultaré el resultado.`,uploadId:String(p.upload_id||'')});screen='asistente';render();if(p.upload_id)poll(p.upload_id);}catch(err){t.innerHTML=`<p class="error">${safe(err.message)}</p>`}}}
+function accessKey(){let key='';try{key=sessionStorage.getItem('tecnm_ai_demo_key')||''}catch{}if(!key){key=prompt('Ingresa la clave de acceso al servicio:')||'';if(!key.trim())throw new Error('Se necesita clave de acceso al servicio.');sessionStorage.setItem('tecnm_ai_demo_key',key.trim())}return key.trim()}
+async function assistantRequest(q,mode='chat'){const key=accessKey();const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},body:JSON.stringify({control:userId,question:q,mode})});const p=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)sessionStorage.removeItem('tecnm_ai_demo_key');throw new Error(p.error||`Error ${r.status}`)}if(p.perfil)sync(p.perfil);return p}
+function sync(perfil){if(String(perfil.control||'')!==userId)return;let u=profile();for(const [from,to] of [['creditos_aprobados','approved'],['creditos_totales','total'],['actividad_actual','activity'],['periodo_habilitado','period'],['horas_acreditadas','hours']]){if(perfil[from]!==null&&perfil[from]!==undefined&&perfil[from]!==''&&Number.isFinite(Number(perfil[from])))u[to]=Number(perfil[from])}
+ const mine=state();let updates=new Map();const history=Array.isArray(perfil.entregas_recientes)?perfil.entregas_recientes:[];for(let i=0;i<history.length;i++){let d=history[i];if(!d||!DOCS.some(x=>x.id===d.tipo_id))continue;if(d.expediente_id&&perfil.expediente_id&&String(d.expediente_id)!==String(perfil.expediente_id))continue;let id=d.tipo_id,ver=Number(d.version||0),row=Number(d.row_number||i);let old=updates.get(id);if(!old||ver>old.version||(ver===old.version&&row>old.row))updates.set(id,{...d,version:ver,row});}
+ for(const [id,d] of updates)mine.docs[id]={...mine.docs[id],estado:norm(d.estado),documento_id:d.documento_id||'',version:d.version||0,observaciones:d.observaciones||'',archivo_drive_id:d.archivo_drive_id||''};
+ if(perfil.estados_documentos&&typeof perfil.estados_documentos==='object')for(const [id,v] of Object.entries(perfil.estados_documentos)){if(!DOCS.some(d=>d.id===id)||updates.has(id))continue;const s=typeof v==='object'?v.estado:v;mine.docs[id]={...mine.docs[id],estado:norm(s)}}
+ mine.updated=new Date().toISOString();save();}
+async function refreshStatus(manual){if(syncing)return;syncing=true;try{const response=await assistantRequest('Consulta de estado','status');if(!response.perfil)throw new Error('WF-01 no devolvió los datos de expediente.');lastSync=Date.now();if(manual)notice='Estados consultados en Google Sheets.';}catch(err){if(manual)notice='No se pudieron consultar los estados: '+err.message;}finally{syncing=false;render()}}
+function silentRefresh(){if(!userId||syncing||Date.now()-lastSync<20000)return;if(!sessionStorage.getItem('tecnm_ai_demo_key'))return;refreshStatus(false)}
+function estadoDeterminista(){
+ const p=latestPeriod(),id=p?`bimestre${p}`:'registro',s=stepInfo(id);
+ const completados=s.docs.filter(completed).map(d=>d.nombre),faltantes=s.docs.filter(d=>!completed(d)).map(d=>`${d.nombre} (${status(d).toLowerCase().replaceAll('_',' ')})`);
+ return `Según tu expediente actual, estás en el ${p?`bimestre ${p}`:'registro'} y tienes ${profile().hours} horas acreditadas.\n\n`+
+ (completados.length?'Ya registrados y validados documentalmente:\n'+completados.map(n=>'• '+n).join('\n')+'\n\n':'')+
+ (faltantes.length?'Por completar o corregir:\n'+faltantes.map(n=>'• '+n).join('\n')+'\n\n':'No faltan documentos del paquete actual.\n\n')+
+ 'Siguiente paso: '+nextStep()+ '\n\nLa validación técnica no equivale a aprobación institucional.';
 }
-async function refreshDocumentsNow(){
- const button=document.getElementById('refreshDocuments');
- if(button){button.disabled=true;button.textContent='Actualizando…';}
- try{
-   const result=await callAssistant('Consultar estado del expediente','status');
-   if(!result.perfil)throw new Error('WF-01 no devolvió el perfil del expediente.');
-   flash='Se consultaron los estados del expediente.';
- }catch(e){flash='No se pudieron actualizar los estados: '+String(e.message||'error de conexión');}
- render();
-}
-
-async function callAssistant(question,mode='chat'){
- let gate='';
- try{gate=sessionStorage.getItem('tecnm_ai_demo_key')||'';}catch{}
- if(!gate){
-   gate=window.prompt('Ingresa la clave de acceso al asistente:')||'';
-   if(!gate.trim())throw new Error('Necesitas la clave de acceso para utilizar el asistente.');
-   try{sessionStorage.setItem('tecnm_ai_demo_key',gate.trim());}catch{}
- }
- const response=await fetch('/api/agent',{
-  method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':gate.trim()},
-  body:JSON.stringify({control,question,mode})
- });
- let payload={};try{payload=await response.json()}catch{}
- if(!response.ok){
-   if(response.status===401){try{sessionStorage.removeItem('tecnm_ai_demo_key')}catch{}}
-   throw new Error(payload.error||`El asistente no pudo responder (${response.status}).`);
- }
- if(payload.perfil)syncFromSheet(payload.perfil);
- return payload;
-}
-let lastStatusCheck=0,checkingStatus=false;
-async function refreshStatusSilent(){
- if(!control||checkingStatus||Date.now()-lastStatusCheck<15000)return;
- let access='';try{access=sessionStorage.getItem('tecnm_ai_demo_key')||''}catch{}
- if(!access)return;
- checkingStatus=true;lastStatusCheck=Date.now();
- try{await callAssistant('Consulta de estado','status');render()}catch{}finally{checkingStatus=false}
-}
-async function ask(text){
- text=(text||'').trim();if(!text||sendingAI)return;
- sendingAI=true;chat.push({role:'user',text});chat.push({role:'assistant',text:'Consultando tu expediente…'});
- page='asistente';render();
- try{
-   const result=await callAssistant(text,'chat');
-   chat[chat.length-1]={role:'assistant',text:String(result.reply||'No se recibió respuesta del asistente.')};
- }catch(e){chat[chat.length-1]={role:'assistant',text:String(e.message||'No fue posible consultar el servicio.')};}
- finally{sendingAI=false;render();const el=document.getElementById('chatList');if(el)el.scrollTop=el.scrollHeight;}
-}
-
-function attachChat(){const f=document.getElementById('chatForm');if(f)f.onsubmit=e=>{e.preventDefault();ask(document.getElementById('question').value)};const all=document.getElementById('showall');if(all)all.onclick=()=>{activeGroup=null;render()}}
-function upload(){let allowed=DOCS.filter(canSubmit);let d=allowed.find(x=>x.id===selected)||allowed[0];selected=d?.id||null;return `<h1 class="heading">Subir documento</h1><p class="lead">Adjunta solamente los documentos habilitados para tu actividad actual.</p><article class="card form-card"><form id="uploadform"><div class="field"><label for="docSel">Documento</label><select id="docSel" required>${allowed.map(x=>`<option value="${x.id}" ${d?.id===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="soft">${d?esc(d.tip):'No hay documentos disponibles para entregar en esta actividad.'}</div><div class="drop section" id="drop"><div class="file-icon">⇧</div><p>Selecciona tu archivo PDF</p><input class="file-input" id="fileInput" type="file" accept=".pdf,application/pdf"><button type="button" id="choose" class="btn">Seleccionar archivo</button><div class="filename" id="fileName"></div><p class="muted small">Máximo 4 MB · Formato PDF</p></div><div class="buttons section"><button class="btn" type="button" data-page="documentos">Cancelar</button><button class="btn primary" type="submit" ${allowed.length?'':'disabled'}>Enviar a revisión</button></div></form><div id="upMessage" aria-live="polite"></div></article>`}
-function attachUpload(){const f=document.getElementById('uploadform');if(!f)return;let input=document.getElementById('fileInput'),select=document.getElementById('docSel'),choose=document.getElementById('choose');choose.onclick=()=>input.click();select.onchange=()=>{selected=select.value;render()};input.onchange=()=>document.getElementById('fileName').textContent=input.files[0]?.name||'';f.onsubmit=async e=>{e.preventDefault();const target=document.getElementById('upMessage');const file=input.files[0];if(!file){target.innerHTML='<div class="error">Selecciona un PDF.</div>';return;}if(file.size>4*1024*1024||(!file.name.toLowerCase().endsWith('.pdf')&&file.type!=='application/pdf')){target.innerHTML='<div class="error">Selecciona un PDF válido de hasta 4 MB.</div>';return;}let form=new FormData();form.append('file',file);form.append('type',select.value);form.append('control',control);target.innerHTML='<div class="notice">Enviando PDF…</div>';
-let gate='';try{gate=sessionStorage.getItem('tecnm_ai_demo_key')||''}catch{}
-if(!gate){gate=window.prompt('Ingresa la clave de acceso a los servicios de la demostración:')||'';if(!gate.trim()){target.innerHTML='<div class="error">Se necesita la clave de acceso.</div>';return;}try{sessionStorage.setItem('tecnm_ai_demo_key',gate.trim())}catch{}}
-try{
- const response=await fetch('/api/upload',{method:'POST',headers:{'X-Demo-Access':gate.trim()},body:form});
- const result=await response.json().catch(()=>({error:'El servidor devolvió una respuesta inválida.'}));
- if(!response.ok||result.ok!==true){if(response.status===401)try{sessionStorage.removeItem('tecnm_ai_demo_key')}catch{};throw new Error(result.error||'No fue posible entregar el documento.')}
- // La recepción no es aprobación. Abrimos el chat y consultamos la entrega específica.
- const uploadId=String(result.upload_id||'');
- data().docs[select.value]='EN_REVISION';save();
- const title=DOCS.find(d=>d.id===select.value)?.name||'documento';
- const pendingMessage={role:'assistant',text:`Recibí tu archivo «${title}». Ahora voy a revisar si corresponde al formato solicitado y si contiene errores. Puedes seguir usando el asistente mientras termina el análisis.`,uploadId};
- chat.push(pendingMessage);
- page='asistente';selected=null;flash='';render();
- window.scrollTo({top:0,behavior:'instant'});
- const chatList=document.getElementById('chatList');if(chatList)chatList.scrollTop=chatList.scrollHeight;
- if(uploadId)pollDocumentResult(uploadId);
-}catch(err){target.innerHTML=`<div class="error">${esc(err.message||'Error de conexión')}</div>`}}}
-
-// Consulta solo la rama status de WF-01; no llama a Gemini en cada intento.
-const uploadPolls=new Set();
-async function pollDocumentResult(uploadId){
- if(uploadPolls.has(uploadId))return;
- uploadPolls.add(uploadId);
- const maxAttempts=12;
- for(let attempt=0;attempt<maxAttempts;attempt++){
-  if(!control)break;
-  if(attempt)await new Promise(resolve=>setTimeout(resolve,7000));
-  try{
-   const result=await callAssistant('Consultar estado del expediente','status');
-   const history=Array.isArray(result.perfil?.entregas_recientes)?result.perfil.entregas_recientes:[];
-   const document=history.find(d=>String(d.documento_id)===uploadId);
-   if(!document)continue; // WF-01 podría no estar devolviendo entregas_recientes todavía.
-   const status=String(document.estado||'').toUpperCase();
-   if(['EN_REVISION','PENDIENTE',''].includes(status))continue;
-   const observations=String(document.observaciones||'').trim();
-   const labels={OBSERVADO:'Encontré observaciones',REVISION_REQUERIDA:'Es necesaria una verificación adicional',VALIDADO_TECNICAMENTE:'Documento validado técnicamente',ACEPTADO:'Documento aceptado según el registro',DOCUMENTO_INCORRECTO:'Documento incorrecto'};
-   const message=(labels[status]||'El resultado del documento está disponible')+'.'+(observations?' '+observations:'')+
-       (status==='OBSERVADO'?' Corrige el archivo y vuelve a enviarlo cuando corresponda.':'');
-   const item=chat.find(m=>m.uploadId===uploadId);
-   if(item){item.text=message;delete item.uploadId;}
-   if(page==='asistente')render();
-   uploadPolls.delete(uploadId);return;
-  }catch(e){
-   // Un error transitorio no debe borrar la confirmación de recepción.
-  }
- }
- const item=chat.find(m=>m.uploadId===uploadId);
- if(item){item.text+=' El análisis puede continuar en segundo plano. Si no aparece el resultado, consulta más tarde el expediente o pregunta por tu documento.';delete item.uploadId;}
- if(page==='asistente')render();
- uploadPolls.delete(uploadId);
-}
-
-async function download(id){const d=DOCS.find(x=>x.id===id);if(!d||!canOffer(d)||!d.path)return;const tries=[d.path,d.fallback].filter(Boolean);let err='El formato todavía no está disponible.';for(const name of tries){try{let r=await fetch('formatos/'+name,{cache:'no-store'});if(!r.ok)continue;let b=await r.blob();if(!b.size)continue;let obj=URL.createObjectURL(b);let a=document.createElement('a');a.href=obj;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),2000);return;}catch(e){err='No fue posible descargar el formato.'}}flash=err+' Comunícate con Vinculación para obtenerlo.';render()}
-render();refreshStatusSilent();
+function esConsultaEstado(q){const t=q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return /que.*(falta|hacer|sigue)|siguiente paso|documentos.*(falta|pendiente)|estado.*documentos|mis documentos/.test(t)}
+async function ask(q){q=String(q||'').trim();if(!q||sending)return;messages.push({role:'user',text:q},{role:'assistant',text:'Consultando tu expediente...'});sending=true;render();try{if(esConsultaEstado(q)){const p=await assistantRequest('Consulta de estado','status');if(!p.perfil)throw new Error('No recibí el expediente actualizado de WF-01.');messages[messages.length-1]={role:'assistant',text:estadoDeterminista()};}else{const p=await assistantRequest(q,'chat');messages[messages.length-1]={role:'assistant',text:String(p.reply||'Sin respuesta del asistente.')};}}catch(err){messages[messages.length-1]={role:'assistant',text:err.message};}finally{sending=false;render();const list=root.querySelector('#chatList');if(list)list.scrollTop=list.scrollHeight}}
+async function poll(uploadId){if(pendingUploads.has(uploadId))return;pendingUploads.add(uploadId);for(let i=0;i<12;i++){if(i)await new Promise(r=>setTimeout(r,7000));try{const p=await assistantRequest('Consulta de estado','status');const list=Array.isArray(p.perfil?.entregas_recientes)?p.perfil.entregas_recientes:[];const d=list.find(x=>String(x.documento_id)===uploadId);if(!d||['EN_REVISION','PENDIENTE'].includes(norm(d.estado)))continue;const msg=messages.find(x=>x.uploadId===uploadId);if(msg){msg.text=(d.observaciones||`Resultado: ${d.estado}`);delete msg.uploadId;}render();break;}catch{}}pendingUploads.delete(uploadId)}
+async function downloadFormat(id){const d=DOCS.find(x=>x.id===id);if(!d||!d.archivo)return;let ok=false;for(const filename of [d.archivo,...(d.alternativas||[])]){try{const r=await fetch('formatos/'+encodeURIComponent(filename),{cache:'no-store'});if(!r.ok)continue;const blob=await r.blob();if(!blob.size)continue;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);ok=true;break;}catch{}}if(!ok){notice='No encontré el formato en la carpeta formatos. Verifica el nombre del archivo.';render()}}
+async function downloadIssued(id){const d=DOCS.find(x=>x.id===id);if(!d||!issued(d))return;try{const r=await fetch('/api/documento-emitido?tipo='+encodeURIComponent(id)+'&control='+encodeURIComponent(userId),{headers:{'X-Demo-Access':accessKey()}});if(!r.ok){const body=await r.json().catch(()=>({}));throw new Error(body.error||'No se pudo obtener el documento emitido.')}const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=id+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}catch(err){notice=err.message;render()}}
+async function advance(id){const s=stepInfo(id);if(!s.done){notice='Todavía faltan documentos por validar en este trámite.';render();return;}const messages={presentacion:'Confirma únicamente que entregaste la carta a la instancia receptora.',bimestre1:'Solicitar apertura del segundo bimestre. No sustituye la confirmación de fechas.',bimestre2:'Solicitar apertura del tercer bimestre. No sustituye la confirmación de fechas.',bimestre3:'Solicitar habilitación del cierre. Se deben comprobar las horas y la duración.'};if(!confirm(messages[id]||'¿Continuar?'))return;try{const r=await fetch('/api/avance',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':accessKey()},body:JSON.stringify({control:userId,accion:id})});const p=await r.json().catch(()=>({}));if(!r.ok||!p.ok)throw new Error(p.error||'No se confirmó el avance.');notice=p.mensaje||'Solicitud registrada. Se actualizará cuando se confirmen las condiciones.';await refreshStatus(false);}catch(err){notice='No fue posible avanzar: '+err.message+'. Para activar este botón conecta la automatización de avance.';}render()}
+try{const c=sessionStorage.getItem(SESSION);if(USERS[c])userId=c}catch{}
+render();if(userId)silentRefresh();
 })();
