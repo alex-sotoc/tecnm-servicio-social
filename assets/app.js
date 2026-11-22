@@ -1,12 +1,12 @@
 (()=>{
 'use strict';
-const ROOT=document.getElementById('app'), KEY='ss_ui_avance_v3',SESSION='tecnm_estudiante_sesion_v1';
+const ROOT=document.getElementById('app'), KEY='ss_ui_avance_v4',SESSION='tecnm_estudiante_sesion_v1';
 const C=window.SS_CATALOGO,STAGES=C.stages,DOCS=C.documents;
 const USERS={
 '24660001':{name:'Ana Sofía Ramírez',nip:'1234',approved:190,total:250,activity:10,period:2,exp:'EXP-001',institution:'Centro Comunitario de Servicio Social',career:'Ingeniería en Sistemas Computacionales'},
 '24660002':{name:'Luis Herrera',nip:'2345',approved:150,total:250,activity:1,period:0,exp:'EXP-002',institution:'',career:'Ingeniería en Sistemas Computacionales'},
 '24660003':{name:'Mariana Torres',nip:'3456',approved:175,total:250,activity:2,period:0,exp:'EXP-003',institution:'',career:'Ingeniería Industrial'}};
-const SEED={'24660001':{docs:{solicitud:'ACEPTADO',compromiso:'ACEPTADO',asignacion:'ACEPTADO',plan:'ACEPTADO',aceptacion:'ACEPTADO',reporte1:'ACEPTADO'},hours:160},'24660002':{docs:{},hours:0},'24660003':{docs:{},hours:0}};
+const SEED={'24660001':{docs:{},hours:0},'24660002':{docs:{},hours:0},'24660003':{docs:{},hours:0}};
 const GROUPS=[{name:'Inicio y registro',start:1,end:3},{name:'Presentación y aceptación',start:4,end:7},{name:'Ejecución y seguimiento',start:8,end:11},{name:'Terminación',start:12,end:16}];
 let control=readSession(),page='inicio',selected=null,activeGroup=null,flash='',chat=[],records=load();
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -20,7 +20,7 @@ function good(){return u().approved*10>=u().total*7}
 function step(){return good()?u().activity:1}
 function groupFor(n){return GROUPS.find(g=>g.start<=n&&n<=g.end)||GROUPS[0]}
 function docState(d){return data().docs[d.id]||'PENDIENTE'}
-function stateBadge(s){const x={ACEPTADO:['Aceptado','green'],OBSERVADO:['Con observaciones','red'],EN_REVISION:['En revisión','yellow'],PENDIENTE:['Pendiente','gray']};const z=x[s]||x.PENDIENTE;return `<span class="pill ${z[1]}">${z[0]}</span>`}
+function stateBadge(s){const x={ACEPTADO:['Aceptado','green'],VALIDADO_DOCUMENTAL:['Validado documentalmente','blue'],OBSERVADO:['Con observaciones','red'],DOCUMENTO_INCORRECTO:['Documento incorrecto','red'],REVISION_REQUERIDA:['Revisión adicional','yellow'],EN_REVISION:['En revisión','yellow'],PENDIENTE:['Pendiente','gray']};const z=x[s]||x.PENDIENTE;return `<span class="pill ${z[1]}">${z[0]}</span>`}
 function canOffer(d){return good() && step()>=d.start && step()<=d.finish && (!d.period||u().period===d.period)}
 function canSubmit(d){return canOffer(d) && (d.action==='upload'||d.action==='external') && docState(d)!=='ACEPTADO'}
 function nav(){return [['inicio','⌂','Inicio'],['documentos','▤','Documentos'],['avance','◷','Avance'],['avisos','♧','Avisos']]}
@@ -50,7 +50,8 @@ function syncFromSheet(perfil){
  if(Number.isInteger(period)&&period>=0&&period<=3)user.period=period;
  if(Number.isFinite(hours)&&hours>=0)data().hours=hours;
  if(perfil.estados_documentos && typeof perfil.estados_documentos==='object'){
-   const allowed=new Set(['ACEPTADO','OBSERVADO','EN_REVISION','PENDIENTE']);
+   const allowed=new Set(['ACEPTADO','VALIDADO_DOCUMENTAL','DOCUMENTO_INCORRECTO','REVISION_REQUERIDA','OBSERVADO','EN_REVISION','PENDIENTE']);
+   data().docs={}; // En cada actualización confiamos en Sheets y no en estados locales de ejemplo.
    for(const [id,status] of Object.entries(perfil.estados_documentos)){
      if(DOCS.some(d=>d.id===id)&&allowed.has(status)) data().docs[id]=status;
    }
