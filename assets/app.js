@@ -97,7 +97,7 @@ function render(){if(!userId){renderLogin();return;}if(!profileReady){renderProf
  root.querySelectorAll('[data-step]').forEach(el=>el.onclick=()=>{bimestreAbierto=el.dataset.step;go('avance')});
  root.querySelectorAll('[data-continue]').forEach(el=>el.onclick=()=>advance(el.dataset.continue));
  root.querySelectorAll('[data-ask]').forEach(el=>el.onclick=()=>{const q=el.dataset.ask;go('asistente');ask(q)});
- root.querySelectorAll('[data-telegram]').forEach(el=>el.onclick=()=>{notice='La vinculación por Telegram se activará al conectar su automatización. Las consultas y entregas funcionan desde el portal.';render()});
+ root.querySelectorAll('[data-telegram]').forEach(el=>el.onclick=()=>{void vincularTelegram(el)});
  let refresh=root.querySelector('#refreshDocuments');if(refresh)refresh.onclick=()=>refreshStatus(true);
  let cf=root.querySelector('#chatForm');if(cf)cf.onsubmit=e=>{e.preventDefault();ask(root.querySelector('#question').value)};
  let form=root.querySelector('#uploadform');if(form)wireUpload(form);
@@ -154,7 +154,7 @@ function progress(){
  const current=currentStep(),pos=PASOS.findIndex(x=>x.id===current);
  return `<div class="row page-intro"><div><h1 class="heading">Mi ruta de trámites</h1><p class="lead">Consulta tu recorrido y lo que ya quedó registrado. Los archivos a entregar están únicamente en Documentos.</p></div></div><article class="card route-card"><div class="route-list">${PASOS.map((p,i)=>{const s=stepInfo(p.id),isCurrent=p.id===current,isPast=i<pos;let flag=isCurrent?'<span class="pill blue">Actual</span>':s.done?badge('VALIDADO_TECNICAMENTE'):isPast?'<span class="pill gray">Etapa anterior</span>':'<span class="pill gray">Próximamente</span>';let hint=isCurrent?`${s.ready} de ${s.total} documentos registrados satisfactoriamente`:s.done?'Archivos registrados y validados técnicamente':isPast?'Consulta el historial del expediente para confirmar archivos anteriores':'Se habilitará cuando corresponda';return `<div class="route-step ${isCurrent?'route-current':''} ${isPast?'route-past':''}"><div class="route-number">${s.done?'✓':i+1}</div><div class="route-content"><div class="row"><strong>${safe(p.nombre)}</strong>${flag}</div><p class="muted small">${safe(p.detalle)}</p><p class="route-hint">${safe(hint)}</p></div></div>`}).join('')}</div></article><article class="card section compact-summary"><div class="row"><div><h2>Trámite actual: ${safe(currentStepName())}</h2><p class="muted small">Revisa tus archivos y sus observaciones.</p></div><button class="btn primary" data-page="documentos">Ir a documentos</button></div></article>`;
 }
-function alerts(){return `<h1 class="heading">Avisos y recordatorios</h1><p class="lead">Consulta tu siguiente trámite y la opción de vincular notificaciones.</p><div class="two"><article class="card"><h2>Próxima acción</h2><div class="warning">${safe(nextStep())}</div><button class="btn" data-page="avance">Ver mi ruta</button></article><article class="card"><h2>Telegram</h2><p class="muted small">Los recordatorios llegarán cuando se configure la vinculación del bot con tu expediente.</p><button class="btn" data-telegram="1">Vincular Telegram</button></article></div>`}
+function alerts(){return `<h1 class="heading">Avisos y recordatorios</h1><p class="lead">Consulta tu siguiente trámite y la opción de vincular notificaciones.</p><div class="two"><article class="card"><h2>Próxima acción</h2><div class="warning">${safe(nextStep())}</div><button class="btn" data-page="avance">Ver mi ruta</button></article><article class="card"><h2>Telegram</h2><p class="muted small">Vincula tu Telegram para recibir avisos de documentos, cambios de etapa y comunicados.</p><button class="btn" data-telegram="1">Vincular Telegram</button></article></div>`}
 function assistant(){if(messages.length===0)messages.push({role:'assistant',text:`Hola, ${profile().name.split(' ')[0]}. Soy tu asistente para completar los trámites. ${nextStep()}`});return `<h1 class="heading">Asistente de Servicio Social</h1><p class="lead">Orientación según tus documentos y tu periodo registrado.</p><div class="two"><article class="card chat-card"><h2>✦ ¿En qué puedo ayudarte?</h2><div class="chat-chips">${['¿Qué documentos me faltan?','¿Cuál es mi siguiente paso?','¿Cómo se contabilizan mis horas?'].map(q=>`<button class="btn" data-ask="${safe(q)}">${safe(q)}</button>`).join('')}</div><div class="chat-list" id="chatList">${messages.map(m=>`<div class="bubble ${m.role}" style="white-space:pre-wrap">${safe(m.text)}</div>`).join('')}</div><form id="chatForm" class="chat-form"><input id="question" placeholder="Escribe tu pregunta..." autocomplete="off"><button class="btn primary" type="submit">➤</button></form></article><article class="card"><h2>Tu situación actual</h2><p>${safe(nextStep())}</p><p class="muted small">Las observaciones técnicas vienen de WF-02 y los estados de WF-01. Una firma visible no demuestra su autenticidad.</p><button class="btn" data-page="documentos">Ver mis documentos</button></article></div>`}
 function upload(){if(!eligible())return `<h1 class="heading">Subir documento</h1><article class="card"><div class="warning">No apto para iniciar el Servicio Social. La subida de documentos no está habilitada.</div><button class="btn section" data-page="inicio">Volver al inicio</button></article>`;const choices=DOCS.filter(d=>d.paso===currentStep()&&(d.accion==='upload'||d.accion==='external')&&!['ACEPTADO','VALIDADO_TECNICAMENTE','EN_REVISION','REVISION_REQUERIDA'].includes(status(d)));const selected=choices.find(x=>x.id===chosen)||choices[0];return `<h1 class="heading">Subir documento</h1><p class="lead">Selecciona el documento correcto. La IA revisará el PDF y mostrará sus observaciones.</p><article class="card form-card"><form id="uploadform"><div class="field"><label for="docSel">Tipo de documento</label><select id="docSel" required>${choices.map(d=>`<option value="${d.id}" ${selected?.id===d.id?'selected':''}>${safe(d.nombre)}</option>`).join('')}</select></div><p class="soft">${safe(selected?.instruccion||'No hay documentos habilitados para entrega.')}</p><div class="drop section"><div class="file-icon">⇧</div><p>Selecciona un archivo PDF</p><input class="file-input" id="fileInput" type="file" accept=".pdf,application/pdf"><button class="btn" id="choose" type="button">Elegir archivo</button><div id="fileName" class="filename"></div><p class="muted small">PDF · Máximo 4 MB</p></div><div class="buttons section"><button class="btn" type="button" data-page="documentos">Cancelar</button><button class="btn primary" type="submit" ${choices.length?'':'disabled'}>Enviar a revisión</button></div><div id="upMessage" aria-live="polite"></div></form></article>`}
 function wireUpload(f){
@@ -181,6 +181,26 @@ function wireUpload(f){
   }catch(err){t.innerHTML=`<p class="error">${safe(err.message)}</p>`;uploading=false;}
  };
 }
+async function vincularTelegram(button){
+ if(!userId||!profileReady){notice='Primero consulta tu expediente.';render();return;}
+ if(button){button.disabled=true;button.textContent='Generando enlace…';}
+ try{
+  const key=accessKey();
+  // Navegar directamente a Telegram al recibir el enlace.
+  const r=await fetch('/api/telegram-link',{
+   method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},
+   body:JSON.stringify({control:userId})
+  });
+  const p=await r.json().catch(()=>({}));
+  if(!r.ok||p.ok!==true||!/^https:\/\/t\.me\/[A-Za-z0-9_]+\?start=[A-Za-z0-9_-]+$/.test(String(p.url||'')))
+   throw new Error(p.error||'No se pudo preparar el enlace de Telegram.');
+  window.location.assign(p.url);
+ }catch(err){
+  notice='Telegram: '+(err.message||'No se pudo conectar.');
+  render();
+ }finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Vincular Telegram';}}
+}
+
 function accessKey(){let key='';try{key=sessionStorage.getItem('tecnm_ai_demo_key')||''}catch{}if(!key){key=prompt('Ingresa la clave de acceso al servicio:')||'';if(!key.trim())throw new Error('Se necesita clave de acceso al servicio.');sessionStorage.setItem('tecnm_ai_demo_key',key.trim())}return key.trim()}
 async function assistantRequest(q,mode='chat'){const key=accessKey();const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},body:JSON.stringify({control:userId,question:q,mode})});const p=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)sessionStorage.removeItem('tecnm_ai_demo_key');throw new Error(p.error||`Error ${r.status}`)}if(p.perfil)sync(p.perfil);return p}
 function sync(perfil){if(String(perfil.control||'')!==userId)return;let u=profile();
