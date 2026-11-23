@@ -23,8 +23,7 @@ export async function onRequestGet({ request, env }) {
         'X-Automation-Key': key,
         'Accept': 'application/json'
       },
-      signal: controller.signal,
-      redirect: 'error',
+      signal: controller.signal
     });
 
     if (!upstream.ok) {
