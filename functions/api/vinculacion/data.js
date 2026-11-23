@@ -1,22 +1,64 @@
-import {json,isAdmin} from '../../_lib/vinculacion-auth.js';
-// URL de n8n de este proyecto: dato público, sin necesidad de variable nueva.
-const WF05_URL='https://servicio-social.app.n8n.cloud/webhook/ss-vinculacion-panel';
-export async function onRequestGet({request,env}) {
-  if(!(await isAdmin(request,env)))return json({ok:false,error:'Inicia sesión para consultar las estadísticas.'},401);
-  if(!env.N8N_WEBHOOK_KEY)return json({ok:false,error:'Falta la clave existente N8N_WEBHOOK_KEY.'},503);
-  const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),45000);
+// WF-05 - Conexion de demostracion (SOLO EXPEDIENTES FICTICIOS).
+// IMPORTANTE: la clave embebida en este archivo NO es segura en repositorios publicos.
+// Para datos reales, configura N8N_WEBHOOK_KEY como secreto en Cloudflare.
+import { json, isAdmin } from '../../_lib/vinculacion-auth.js';
+
+const WF05_URL = 'https://servicio-social.app.n8n.cloud/webhook/ss-vinculacion-panel';
+const DEMO_N8N_KEY = 'wf05_demo_llzdG_UfFKxzwxFGni4vebniHnLgC5VcTs0XR9Zqp9u1RnwA';
+
+export async function onRequestGet({ request, env }) {
+  if (!(await isAdmin(request, env))) {
+    return json({ok:false,error:'Acceso administrativo no autorizado.'}, 401);
+  }
+
+  // Conserva compatibilidad con una variable real si existe.
+  const key = env.N8N_WEBHOOK_KEY || DEMO_N8N_KEY;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+
   try {
-    const upstream=await fetch(WF05_URL,{
-      method:'GET',signal:ctrl.signal,
-      headers:{'X-Automation-Key':env.N8N_WEBHOOK_KEY,'Accept':'application/json'},
-      redirect:'error'
+    const upstream = await fetch(WF05_URL, {
+      method: 'GET',
+      headers: {
+        'X-Automation-Key': key,
+        'Accept': 'application/json'
+      },
+      signal: controller.signal,
+      redirect: 'error',
     });
-    if(!upstream.ok)return json({ok:false,error:`WF-05 respondió con estado ${upstream.status}. Revisa el webhook y su credencial.`},502);
-    const data=await upstream.json();
-    if(data?.ok!==true||!Array.isArray(data.estudiantes)||!Array.isArray(data.expedientes)||!Array.isArray(data.documentos))
-      return json({ok:false,error:'WF-05 devolvió un formato inesperado. Revisa el nodo Preparar panel.'},502);
+
+    if (!upstream.ok) {
+      const hints = {
+        401: 'n8n rechazo la clave Header Auth. Verifica el encabezado X-Automation-Key y su Value.',
+        403: 'n8n rechazo el acceso. Revisa la autenticacion del Webhook.',
+        404: 'n8n no encontro el webhook de produccion. Publica WF-05 y comprueba su Path.',
+        500: 'WF-05 genero un error. Revisa Executions en n8n.',
+      };
+      return json({
+        ok: false,
+        error: hints[upstream.status] || `WF-05 respondio HTTP ${upstream.status}. Revisa Executions en n8n.`,
+        status_n8n: upstream.status
+      }, 502);
+    }
+
+    let data;
+    try { data = await upstream.json(); }
+    catch { return json({ok:false,error:'WF-05 no devolvio JSON. Verifica Responder panel.'},502); }
+
+    if (data?.ok !== true || !Array.isArray(data.estudiantes) ||
+        !Array.isArray(data.expedientes) || !Array.isArray(data.documentos)) {
+      return json({ok:false,error:'WF-05 devolvio un JSON incompleto. Revisa Preparar panel: ok, estudiantes, expedientes y documentos.'},502);
+    }
+
     return json(data);
-  } catch(error) {
-    return json({ok:false,error:error?.name==='AbortError'?'WF-05 tardó demasiado en responder.':'No fue posible consultar WF-05.'},504);
-  } finally {clearTimeout(t)}
+  } catch (error) {
+    return json({
+      ok:false,
+      error: error?.name === 'AbortError'
+        ? 'WF-05 tardo mas de 45 segundos en responder.'
+        : 'No se pudo conectar con WF-05. Comprueba la URL y la ejecucion del workflow.'
+    }, 504);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
