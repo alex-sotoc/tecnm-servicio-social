@@ -119,7 +119,7 @@ function renderProfileLoading(){
  const retry=root.querySelector('#retryProfile');if(retry)retry.onclick=()=>refreshStatus(true);
  const exit=root.querySelector('#exitProfile');if(exit)exit.onclick=()=>{userId=null;profileReady=false;profileLoadError='';sessionStorage.removeItem(SESSION);render()};
 }
-function renderLogin(){root.innerHTML=`<div class="auth"><div class="auth-card"><div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><h1>Iniciar sesión</h1><p>Consulta y completa tus trámites</p><form id="login"><div class="field"><label for="ctl">Número de control</label><input id="ctl" inputmode="numeric" maxlength="8" autocomplete="username" required></div><div class="field"><label for="nip">NIP de cuatro dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></div><button class="btn primary full" type="submit">Iniciar sesión →</button><div id="loginError" aria-live="polite"></div></form></div></div>`;root.querySelector('#login').onsubmit=e=>{e.preventDefault();const c=root.querySelector('#ctl').value.trim(),n=root.querySelector('#nip').value.trim();if(!USERS[c]||USERS[c].nip!==n){root.querySelector('#loginError').innerHTML='<p class="error">Número de control o NIP incorrecto.</p>';return;}userId=c;profileReady=false;profileLoadError='';sessionStorage.setItem(SESSION,c);screen='inicio';messages=[];render();refreshStatus(false)}}
+function renderLogin(){root.innerHTML=`<div class="auth"><div class="auth-card"><div class="brand"><div class="emblem">SS</div><div><b>Servicio Social</b><small>TecNM Campus Matehuala</small></div></div><h1>Iniciar sesión</h1><p>Consulta y completa tus trámites</p><form id="login"><div class="field"><label for="ctl">Número de control</label><input id="ctl" inputmode="numeric" maxlength="8" autocomplete="username" required></div><div class="field"><label for="nip">NIP de cuatro dígitos</label><input id="nip" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" required></div><button class="btn primary full" type="submit">Iniciar sesión →</button><div id="loginError" aria-live="polite"></div></form></div></div>`;root.querySelector('#login').onsubmit=async e=>{e.preventDefault();const c=root.querySelector('#ctl').value.trim(),n=root.querySelector('#nip').value.trim();if(!USERS[c]||USERS[c].nip!==n){root.querySelector('#loginError').innerHTML='<p class="error">Número de control o NIP incorrecto.</p>';return;}try{const r=await fetch('/api/demo-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({control:c,nip:n})});const p=await r.json();if(!r.ok||!p.ok)throw new Error(p.error||'No se pudo iniciar sesión');}catch(err){root.querySelector('#loginError').innerHTML='<p class="error">'+safe(err.message)+'</p>';return;}userId=c;profileReady=false;profileLoadError='';sessionStorage.setItem(SESSION,c);screen='inicio';messages=[];render();refreshStatus(false)}}
 function home(){
  if(!eligible()){
   const u=profile();
@@ -136,7 +136,7 @@ function home(){
  const period=latestPeriod(),s=stepInfo(currentStep()),name=profile().name.split(' ')[0],hours=profile().hours;return `<section class="hero"><p class="eyebrow">Mi Servicio Social</p><h1>¡Hola, ${safe(name)}!</h1><p>Tu asistente te acompaña con los formatos, las entregas y el siguiente paso de cada trámite.</p><div class="buttons section"><button class="btn primary" data-page="documentos">Ver mis documentos</button><button class="btn" data-page="asistente">✦ Preguntar al asistente</button></div></section><div class="two"><article class="card"><h2>Tu entrega actual</h2><div class="status-hero">${safe(currentStepName())}</div><p class="muted small">${s.ready} de ${s.total} documentos validados documentalmente</p><div class="progress"><span style="width:${s.total?s.ready/s.total*100:0}%"></span></div></article><article class="card"><h2>Horas acreditadas</h2><div class="progress-label"><strong>${hours} / 500 horas</strong><span>${Math.round(hours/500*100)}%</span></div><div class="progress"><span style="width:${Math.min(100,hours/500*100)}%"></span></div><p class="muted small">El total acreditado se obtiene del expediente, no de un registro manual.</p></article></div><div class="two section"><article class="card"><h2>¿Qué sigue?</h2><p>${safe(nextStep())}</p><button class="btn primary" data-page="avance">Ver mi ruta →</button></article><article class="card"><h2>Asistente de IA</h2><p>Consulta qué entregar y revisa las observaciones del documento recibido.</p><button class="btn" data-ask="¿Qué documentos me faltan realmente según mi expediente?">Consultar pendientes</button></article></div>`}
 function rowDocument(d){const rec=docRecord(d),st=rec?.estado||'PENDIENTE',p=stepInfo(d.paso),allowed=p.unlocked,completedOrWaiting=['VALIDADO_TECNICAMENTE','ACEPTADO','EN_REVISION','REVISION_REQUERIDA','EMITIDO','DISPONIBLE'].includes(st);let actions=[];
  if(d.accion==='generated'){
-   if(issued(d))actions.push(`<button class="btn" data-generated="${d.id}">↓ Descargar documento emitido</button>`);
+   if(issued(d))actions.push(`<button class="btn" data-generated="${d.id}">↓ Generar y descargar PDF</button>`);
    else actions.push(`<span class="muted small">Todavía no hay una emisión registrada en el expediente.</span>`);
  }else{
    if(d.archivo)actions.push(`<button class="btn" data-download="${d.id}">↓ Descargar formato</button>`);
@@ -147,7 +147,7 @@ function rowDocument(d){const rec=docRecord(d),st=rec?.estado||'PENDIENTE',p=ste
 function documents(){
  if(!eligible())return `<div class="row page-intro"><div><p class="eyebrow">Situación académica</p><h1 class="heading">Mis documentos</h1></div></div><article class="card"><h2>Entrega no habilitada</h2><div class="warning">No apto para iniciar el Servicio Social: todavía no cumples el mínimo del 70% de créditos aprobados.</div><p class="section muted">Cuando se verifique que cumples el requisito, podrás comenzar el registro y entregar documentos.</p><button class="btn primary" data-page="asistente">Consultar al asistente</button></article>`;
  const id=currentStep(),paso=PASOS.find(p=>p.id===id),s=stepInfo(id);
- return `<div class="row page-intro"><div><p class="eyebrow">Entrega habilitada</p><h1 class="heading">${safe(paso.nombre)}</h1><p class="lead">${safe(paso.detalle)} Solo aparecen los archivos correspondientes a tu trámite actual.</p></div><button class="btn" id="refreshDocuments">↻ Actualizar estados</button></div><article class="card current-docs"><div class="row current-docs-head"><div><strong>${s.ready} de ${s.total} documentos revisados</strong><p class="muted small">${s.done?'Se completaron las comprobaciones documentales de este trámite.':'Cada archivo se comprueba por separado; las observaciones aparecerán en el asistente.'}</p></div>${s.done?badge('VALIDADO_TECNICAMENTE'):`<span class="pill blue">${s.ready}/${s.total}</span>`}</div><div class="progress"><span style="width:${s.total?Math.round(100*s.ready/s.total):0}%"></span></div><div class="doc-list">${s.docs.map(rowDocument).join('')}</div>${s.docs.length?'':'<p class="muted">Todavía no hay archivos disponibles para esta actividad.</p>'}</article><p class="under-content"><button class="text-link" data-page="avance">Consultar mi ruta completa</button> · Las entregas anteriores permanecen registradas en tu expediente.</p>`;
+ return `<div class="row page-intro"><div><p class="eyebrow">Entrega habilitada</p><h1 class="heading">${safe(paso.nombre)}</h1><p class="lead">${safe(paso.detalle)} Solo aparecen los archivos correspondientes a tu trámite actual.</p></div><button class="btn" id="refreshDocuments">↻ Actualizar estados</button></div><article class="card current-docs"><div class="row current-docs-head"><div><strong>${s.ready} de ${s.total} documentos revisados</strong><p class="muted small">${s.done?'Se completaron las comprobaciones documentales de este trámite.':'Cada archivo se comprueba por separado; las observaciones aparecerán en el asistente.'}</p></div>${s.done?badge('VALIDADO_TECNICAMENTE'):`<span class="pill blue">${s.ready}/${s.total}</span>`}</div><div class="progress"><span style="width:${s.total?Math.round(100*s.ready/s.total):0}%"></span></div><div class="doc-list">${s.docs.map(rowDocument).join('')}</div>${PASOS.findIndex(p=>p.id===id)>=1?'<div class="buttons section"><button class="btn primary" data-generated="presentacion">↓ Generar y descargar carta de presentación</button></div>':''}${s.done?'<div class="buttons section"><button class="btn" data-page="avance">Siguiente → Ver mi ruta</button></div>':''}${s.docs.length?'':'<p class="muted">Todavía no hay archivos disponibles para esta actividad.</p>'}</article><p class="under-content"><button class="text-link" data-page="avance">Consultar mi ruta completa</button> · Las entregas anteriores permanecen registradas en tu expediente.</p>`;
 }
 function progress(){
  if(!eligible())return `<h1 class="heading">Mi ruta de trámites</h1><article class="card"><div class="row"><h2>Servicio Social no habilitado</h2><span class="pill red">No apto</span></div><p class="muted">Las etapas de Servicio Social se habilitarán cuando cumplas el requisito mínimo de créditos y se confirme tu elegibilidad.</p><button class="btn primary" data-page="asistente">Consultar al asistente</button></article>`;
@@ -166,12 +166,12 @@ function wireUpload(f){
   const t=root.querySelector('#upMessage'),file=input.files[0],type=select.value;
   if(!file){t.innerHTML='<p class="error">Selecciona un PDF.</p>';return;}
   if(file.size>4*1024*1024||(!file.name.toLowerCase().endsWith('.pdf')&&file.type!=='application/pdf')){t.innerHTML='<p class="error">Solo PDF de hasta 4 MB.</p>';return;}
-  try{const key=accessKey();const uploadId=crypto.randomUUID();const name=DOCS.find(d=>d.id===type)?.nombre||'documento';
+  try{const uploadId=crypto.randomUUID();const name=DOCS.find(d=>d.id===type)?.nombre||'documento';
    const message={role:'assistant',text:`Enviando «${name}»… Estoy confirmando su recepción. En cuanto se registre, comprobaré sus observaciones.`,uploadId,phase:'sending'};
    messages.push(message);uploading=true;go('asistente');render();
    const form=new FormData();form.append('file',file);form.append('type',type);form.append('control',userId);form.append('upload_id',uploadId);
    void (async()=>{let confirmed=false;
-     try{const r=await fetch('/api/upload',{method:'POST',headers:{'X-Demo-Access':key},body:form});const p=await r.json().catch(()=>({}));
+     try{const r=await fetch('/api/upload',{method:'POST',body:form});const p=await r.json().catch(()=>({}));
        if(!r.ok||!p.ok)throw new Error(p.error||'No se confirmó la recepción.');
        confirmed=true;message.phase='processing';message.text=`Recibí «${name}». El archivo está registrado y la validación continuará en segundo plano. Puedes preguntarme cualquier cosa mientras verifico el resultado.`;
        state().docs[type]={...(state().docs[type]||{}),estado:'EN_REVISION',documento_id:uploadId};save();render();
@@ -185,10 +185,10 @@ async function vincularTelegram(button){
  if(!userId||!profileReady){notice='Primero consulta tu expediente.';render();return;}
  if(button){button.disabled=true;button.textContent='Generando enlace…';}
  try{
-  const key=accessKey();
+  
   // Navegar directamente a Telegram al recibir el enlace.
   const r=await fetch('/api/telegram-link',{
-   method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},
+   method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({control:userId})
   });
   const p=await r.json().catch(()=>({}));
@@ -201,8 +201,7 @@ async function vincularTelegram(button){
  }finally{if(button&&button.isConnected){button.disabled=false;button.textContent='Vincular Telegram';}}
 }
 
-function accessKey(){let key='';try{key=sessionStorage.getItem('tecnm_ai_demo_key')||''}catch{}if(!key){key=prompt('Ingresa la clave de acceso al servicio:')||'';if(!key.trim())throw new Error('Se necesita clave de acceso al servicio.');sessionStorage.setItem('tecnm_ai_demo_key',key.trim())}return key.trim()}
-async function assistantRequest(q,mode='chat'){const key=accessKey();const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':key},body:JSON.stringify({control:userId,question:q,mode})});const p=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401)sessionStorage.removeItem('tecnm_ai_demo_key');throw new Error(p.error||`Error ${r.status}`)}if(p.perfil)sync(p.perfil);return p}
+async function assistantRequest(q,mode='chat'){const r=await fetch('/api/agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({control:userId,question:q,mode})});const p=await r.json().catch(()=>({}));if(!r.ok){throw new Error(p.error||`Error ${r.status}`)}if(p.perfil)sync(p.perfil);return p}
 function sync(perfil){if(String(perfil.control||'')!==userId)return;let u=profile();
  const etapa=String(perfil.etapa_portal||'').trim().toLowerCase();
  const etapas=['no_elegible','registro','presentacion','aceptacion','bimestre1','bimestre2','bimestre3','cierre','constancia'];
@@ -238,7 +237,7 @@ async function refreshStatus(manual){
 function silentRefresh(){
  if(!userId||syncing||Date.now()-lastSync<20000)return;
  // No pedir una clave mediante un diálogo inesperado en cada apertura.
- if(!sessionStorage.getItem('tecnm_ai_demo_key'))return;
+
  refreshStatus(false);
 }
 function estadoDeterminista(){
@@ -281,8 +280,22 @@ ${d.observaciones}`:`El documento «${name}» fue recibido y permanece en revisi
  pendingUploads.delete(uploadId);
 }
 async function downloadFormat(id){const d=DOCS.find(x=>x.id===id);if(!d||!d.archivo)return;let ok=false;for(const filename of [d.archivo,...(d.alternativas||[])]){try{const r=await fetch('formatos/'+encodeURIComponent(filename),{cache:'no-store'});if(!r.ok)continue;const blob=await r.blob();if(!blob.size)continue;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);ok=true;break;}catch{}}if(!ok){notice='No encontré el formato en la carpeta formatos. Verifica el nombre del archivo.';render()}}
-async function downloadIssued(id){const d=DOCS.find(x=>x.id===id);if(!d||!issued(d))return;try{const r=await fetch('/api/documento-emitido?tipo='+encodeURIComponent(id)+'&control='+encodeURIComponent(userId),{headers:{'X-Demo-Access':accessKey()}});if(!r.ok){const body=await r.json().catch(()=>({}));throw new Error(body.error||'No se pudo obtener el documento emitido.')}const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=id+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);}catch(err){notice=err.message;render()}}
-async function advance(id){const s=stepInfo(id);if(!s.done){notice='Todavía faltan documentos por validar en este trámite.';render();return;}const messages={presentacion:'Confirma únicamente que entregaste la carta a la instancia receptora.',bimestre1:'Solicitar apertura del segundo bimestre. No sustituye la confirmación de fechas.',bimestre2:'Solicitar apertura del tercer bimestre. No sustituye la confirmación de fechas.',bimestre3:'Solicitar habilitación del cierre. Se deben comprobar las horas y la duración.'};if(!confirm(messages[id]||'¿Continuar?'))return;try{const r=await fetch('/api/avance',{method:'POST',headers:{'Content-Type':'application/json','X-Demo-Access':accessKey()},body:JSON.stringify({control:userId,accion:id})});const p=await r.json().catch(()=>({}));if(!r.ok||!p.ok)throw new Error(p.error||'No se confirmó el avance.');notice=p.mensaje||'Solicitud registrada. Se actualizará cuando se confirmen las condiciones.';await refreshStatus(false);}catch(err){notice='No fue posible avanzar: '+err.message+'. Para activar este botón conecta la automatización de avance.';}render()}
+async function downloadIssued(id){
+  if(!['presentacion','constancia'].includes(id))return;
+  if(id==='constancia'&&currentStep()!=='constancia'){
+    notice='La constancia todavía no está habilitada.';render();return;
+  }
+  notice='Generando PDF. No pulses nuevamente mientras se prepara…';render();
+  try{
+    const r=await fetch('/api/documento-emitido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:id,control:userId})});
+    if(!r.ok){const p=await r.json().catch(()=>({}));throw new Error(p.error||'WF-06 no devolvió el documento.');}
+    const blob=await r.blob();if(!blob.size||!blob.type.includes('pdf'))throw new Error('El servidor no devolvió un PDF válido.');
+    const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=id+'_'+userId+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),15000);
+    notice='PDF generado y guardado en Drive. Revisa tus descargas.';
+  }catch(err){notice=err.message;}
+  render();
+}
+async function advance(id){const s=stepInfo(id);if(!s.done){notice='Todavía faltan documentos por validar en este trámite.';render();return;}const messages={presentacion:'Confirma únicamente que entregaste la carta a la instancia receptora.',bimestre1:'Solicitar apertura del segundo bimestre. No sustituye la confirmación de fechas.',bimestre2:'Solicitar apertura del tercer bimestre. No sustituye la confirmación de fechas.',bimestre3:'Solicitar habilitación del cierre. Se deben comprobar las horas y la duración.'};if(!confirm(messages[id]||'¿Continuar?'))return;try{const r=await fetch('/api/avance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({control:userId,accion:id})});const p=await r.json().catch(()=>({}));if(!r.ok||!p.ok)throw new Error(p.error||'No se confirmó el avance.');notice=p.mensaje||'Solicitud registrada. Se actualizará cuando se confirmen las condiciones.';await refreshStatus(false);}catch(err){notice='No fue posible avanzar: '+err.message+'. Para activar este botón conecta la automatización de avance.';}render()}
 try{const c=sessionStorage.getItem(SESSION);if(USERS[c])userId=c}catch{}
 render();if(userId)silentRefresh();
 })();

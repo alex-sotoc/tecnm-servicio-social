@@ -1,3 +1,4 @@
+import { demoAllowed } from '../_lib/demo-session.js';
 // Cloudflare Pages Function: POST /api/telegram-link
 // DEMO: comparte la protección X-Demo-Access que ya existe en /api/agent.
 // IMPORTANTE: en producción reemplazar este control de acceso por sesiones
@@ -13,14 +14,13 @@ function same(a,b){
  return diff===0;
 }
 export async function onRequestPost({request,env}){
- if(!env.DEMO_ACCESS_KEY||!env.N8N_WEBHOOK_KEY)
+ if(!env.N8N_WEBHOOK_KEY)
   return reply({ok:false,error:'Falta DEMO_ACCESS_KEY o N8N_WEBHOOK_KEY en Cloudflare Production.'},503);
- const access=request.headers.get('X-Demo-Access')||'';
- if(access.length>150||!same(access,env.DEMO_ACCESS_KEY))return reply({ok:false,error:'Acceso no autorizado.'},401);
  if(!(request.headers.get('content-type')||'').toLowerCase().includes('application/json'))return reply({ok:false,error:'Se requiere JSON.'},415);
  if(Number(request.headers.get('content-length')||0)>2048)return reply({ok:false,error:'Solicitud demasiado grande.'},413);
  let body;try{body=await request.json()}catch{return reply({ok:false,error:'JSON inválido.'},400)}
  const control=String(body?.control||'').trim();
+ if(!(await demoAllowed(request,env,control)))return reply({ok:false,error:'Sesión del alumno no válida.'},401);
  if(!['24660001','24660002','24660003'].includes(control))return reply({ok:false,error:'Expediente no disponible.'},403);
  const bot=TELEGRAM_BOT;
  if(!/^[A-Za-z0-9_]{5,32}$/.test(bot)||!bot.toLowerCase().endsWith('bot'))

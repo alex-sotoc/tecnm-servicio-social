@@ -1,3 +1,4 @@
+import { demoAllowed } from '../_lib/demo-session.js';
 // functions/api/upload.js — recepción de archivos PDF con identificador rastreable.
 // El navegador envía multipart/form-data; al webhook enviamos el PDF binario puro.
 const HEADERS = {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -15,10 +16,8 @@ function sameString(a,b){
  return mismatch===0;
 }
 export async function onRequestPost({request,env}) {
-  if(!env.N8N_WF02_URL||!env.N8N_WEBHOOK_KEY||!env.DEMO_ACCESS_KEY)
+  if(!env.N8N_WF02_URL||!env.N8N_WEBHOOK_KEY)
     return answer({ok:false,error:'El servicio documental no está configurado.'},503);
-  const gate=request.headers.get('X-Demo-Access')||'';
-  if(gate.length>150||!sameString(gate,env.DEMO_ACCESS_KEY))return answer({ok:false,error:'Acceso al servicio no autorizado.'},401);
   if(!(request.headers.get('content-type')||'').includes('multipart/form-data'))
     return answer({ok:false,error:'Se requiere un formulario con un PDF.'},415);
   const max=4*1024*1024;
@@ -27,6 +26,7 @@ export async function onRequestPost({request,env}) {
   let form;
   try{form=await request.formData()}catch{return answer({ok:false,error:'No fue posible leer el formulario.'},400)}
   const control=String(form.get('control')||'').trim();
+  if(!(await demoAllowed(request,env,control)))return answer({ok:false,error:'Sesión del alumno no válida.'},401);
   const tipo=String(form.get('type')||'').trim();
   const file=form.get('file');
   if(!['24660001','24660002','24660003'].includes(control)||!ALLOWED.has(tipo))

@@ -1,3 +1,4 @@
+import { demoAllowed } from '../_lib/demo-session.js';
 // Cloudflare Pages Function: /api/agent
 // Solo para el entorno académico con tres cuentas ficticias.
 // Define N8N_WF01_URL, N8N_WEBHOOK_KEY y DEMO_ACCESS_KEY como secretos en Pages.
@@ -15,16 +16,15 @@ function sameString(a,b){
  return mismatch===0;
 }
 export async function onRequestPost({request,env}){
- if(!env.N8N_WF01_URL||!env.N8N_WEBHOOK_KEY||!env.DEMO_ACCESS_KEY){
+ if(!env.N8N_WF01_URL||!env.N8N_WEBHOOK_KEY){
    return answer({error:'El asistente todavía no está configurado.'},503);
  }
- const access=request.headers.get('X-Demo-Access')||'';
- if(access.length>150||!sameString(access,env.DEMO_ACCESS_KEY))return answer({error:'Clave de acceso al asistente incorrecta.'},401);
  if((request.headers.get('content-type')||'').split(';')[0].trim()!=='application/json')return answer({error:'Solo se admite JSON.'},415);
  const size=Number(request.headers.get('content-length')||0);
  if(size>8000)return answer({error:'La petición supera el tamaño permitido.'},413);
  let input;try{input=await request.json()}catch{return answer({error:'JSON inválido.'},400)}
  const control=String(input?.control||'');
+ if(!(await demoAllowed(request,env,control)))return answer({error:'Sesión del alumno no válida.'},401);
  const question=String(input?.question||'').trim();
  const mode=input?.mode==='status'?'status':'chat';
  if(!['24660001','24660002','24660003'].includes(control))return answer({error:'Cuenta no disponible.'},403);
